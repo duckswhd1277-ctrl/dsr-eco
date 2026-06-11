@@ -184,10 +184,6 @@
             background: #3b82f6;
         }
 
-        .calendar-event.custom {
-            background: #8b5cf6;
-        }
-
         .month-nav {
             display: flex;
             justify-content: space-between;
@@ -221,6 +217,7 @@
             gap: 10px;
             margin-bottom: 1.5rem;
             border-bottom: 2px solid #f0f0f0;
+            flex-wrap: wrap;
         }
 
         .tab {
@@ -233,6 +230,7 @@
             color: #999;
             border-bottom: 3px solid transparent;
             transition: all 0.2s;
+            white-space: nowrap;
         }
 
         .tab.active {
@@ -252,6 +250,8 @@
             display: flex;
             flex-direction: column;
             gap: 0.75rem;
+            max-height: 400px;
+            overflow-y: auto;
         }
 
         .checkbox-item {
@@ -322,6 +322,17 @@
             background: #e0e0e0;
         }
 
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
         .event-form {
             display: flex;
             flex-direction: column;
@@ -367,6 +378,16 @@
             font-weight: 600;
         }
 
+        .status-open {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .status-closed {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
         .status-pending {
             background: #fef3c7;
             color: #92400e;
@@ -375,6 +396,76 @@
         .status-completed {
             background: #d1fae5;
             color: #065f46;
+        }
+
+        .label-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-right: 6px;
+            color: white;
+        }
+
+        .label-bug {
+            background: #ef4444;
+        }
+
+        .label-feature {
+            background: #3b82f6;
+        }
+
+        .label-task {
+            background: #8b5cf6;
+        }
+
+        .label-improvement {
+            background: #f59e0b;
+        }
+
+        .issue-item {
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .issue-content {
+            flex: 1;
+        }
+
+        .issue-title {
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 0.5rem;
+            cursor: pointer;
+        }
+
+        .issue-title:hover {
+            color: #667eea;
+        }
+
+        .issue-description {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 0.5rem;
+        }
+
+        .issue-meta {
+            font-size: 12px;
+            color: #999;
+        }
+
+        .issue-actions {
+            display: flex;
+            gap: 8px;
+            flex-direction: column;
+            align-items: flex-end;
         }
 
         .documents-grid {
@@ -426,7 +517,7 @@
 
         .deadline-item {
             display: grid;
-            grid-template-columns: 1fr 100px 1fr;
+            grid-template-columns: 1fr 100px;
             gap: 1rem;
             align-items: center;
             padding: 0.75rem;
@@ -447,16 +538,6 @@
             border: 1px solid #ddd;
             border-radius: 4px;
             font-size: 14px;
-        }
-
-        .deadline-remove {
-            background: #ef4444;
-            color: white;
-            border: none;
-            padding: 6px 12px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 12px;
         }
 
         @media (max-width: 1024px) {
@@ -494,6 +575,36 @@
         .stat-env .stat-value { color: #10b981; }
         .stat-safety .stat-value { color: #f59e0b; }
         .stat-psm .stat-value { color: #3b82f6; }
+        .stat-issues .stat-value { color: #667eea; }
+
+        .filter-buttons {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 6px 12px;
+            background: #f0f0f0;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #666;
+        }
+
+        .filter-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .filter-btn:hover {
+            border-color: #667eea;
+        }
     </style>
 </head>
 <body>
@@ -517,6 +628,10 @@
             <div class="stat-card stat-psm">
                 <div class="stat-value" id="statPsm">0/0</div>
                 <div class="stat-label">PSM 관리</div>
+            </div>
+            <div class="stat-card stat-issues">
+                <div class="stat-value" id="statIssues">0</div>
+                <div class="stat-label">Issues</div>
             </div>
         </div>
 
@@ -598,8 +713,25 @@
             </div>
         </div>
 
+        <!-- Issues 관리 -->
+        <div class="card" style="margin-bottom: 2rem;">
+            <div class="card-title">🐛 Issues 추적</div>
+
+            <div class="filter-buttons">
+                <button class="filter-btn active" onclick="filterIssues('all')">모두</button>
+                <button class="filter-btn" onclick="filterIssues('open')">열림</button>
+                <button class="filter-btn" onclick="filterIssues('closed')">닫힘</button>
+                <button class="filter-btn" onclick="filterIssues('bug')">버그</button>
+                <button class="filter-btn" onclick="filterIssues('feature')">기능</button>
+            </div>
+
+            <div id="issuesList"></div>
+
+            <button class="btn btn-primary" onclick="addIssueModal()" style="width: 100%; margin-top: 1rem;">➕ Issue 생성</button>
+        </div>
+
         <!-- 추가 기능 -->
-        <div class="dashboard-grid" style="margin-top: 2rem;">
+        <div class="dashboard-grid">
             <!-- 문서 라이브러리 -->
             <div class="card">
                 <div class="card-title">📚 문서 라이브러리</div>
@@ -641,8 +773,8 @@
     </div>
 
     <!-- 모달 -->
-    <div id="modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
-        <div style="background: white; border-radius: 12px; padding: 2rem; max-width: 500px; width: 90%;">
+    <div id="modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; overflow-y: auto;">
+        <div style="background: white; border-radius: 12px; padding: 2rem; max-width: 500px; width: 90%; margin: 2rem auto;">
             <h2 style="margin-bottom: 1rem;" id="modalTitle">새 항목 추가</h2>
             <div id="modalContent"></div>
             <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
@@ -656,6 +788,7 @@
         // 데이터 저장소
         let appData = {
             tasks: [],
+            issues: [],
             documents: [],
             settings: {
                 env: '매월 말일',
@@ -666,12 +799,14 @@
 
         let currentMonth = new Date();
         let modalType = '';
+        let currentFilter = 'all';
 
         // 초기화
         function init() {
             loadData();
             renderCalendar();
             renderTasks();
+            renderIssues();
             renderDocuments();
             updateProgress();
         }
@@ -689,6 +824,7 @@
             localStorage.setItem('dashboardData', JSON.stringify(appData));
             updateProgress();
             renderTasks();
+            renderIssues();
             renderCalendar();
         }
 
@@ -705,12 +841,10 @@
 
             let html = '<tr><th>일</th><th>월</th><th>화</th><th>수</th><th>목</th><th>금</th><th>토</th></tr>';
 
-            // 이전 달 날짜
             for (let i = prevLastDay.getDate() - firstDay.getDay() + 1; i <= prevLastDay.getDate(); i++) {
                 html += `<td class="other-month">${i}</td>`;
             }
 
-            // 현재 달 날짜
             for (let i = 1; i <= lastDay.getDate(); i++) {
                 const isToday = i === new Date().getDate() && month === new Date().getMonth() && year === new Date().getFullYear();
                 html += `<td class="${isToday ? 'today' : ''}">
@@ -719,14 +853,12 @@
                 </td>`;
             }
 
-            // 다음 달 날짜
             for (let i = 1; i <= 6 * 7 - lastDay.getDate() - firstDay.getDay(); i++) {
                 html += `<td class="other-month">${i}</td>`;
             }
 
             document.getElementById('calendar').innerHTML = html;
 
-            // 이벤트 배치
             appData.tasks.forEach(task => {
                 if (task.date) {
                     const date = new Date(task.date);
@@ -734,7 +866,6 @@
                         const day = date.getDate();
                         const el = document.getElementById(`events-${day}`);
                         if (el) {
-                            const statusClass = task.completed ? 'completed' : 'pending';
                             el.innerHTML += `<div class="calendar-event ${task.category}" title="${task.name}">${task.name}</div>`;
                         }
                     }
@@ -761,6 +892,63 @@
                     </div>
                 `).join('');
             });
+        }
+
+        // Issues 렌더링
+        function renderIssues() {
+            let filtered = appData.issues;
+
+            if (currentFilter === 'open') {
+                filtered = appData.issues.filter(i => i.status === 'open');
+            } else if (currentFilter === 'closed') {
+                filtered = appData.issues.filter(i => i.status === 'closed');
+            } else if (currentFilter === 'bug') {
+                filtered = appData.issues.filter(i => i.label === 'bug');
+            } else if (currentFilter === 'feature') {
+                filtered = appData.issues.filter(i => i.label === 'feature');
+            }
+
+            const html = filtered.map(issue => `
+                <div class="issue-item">
+                    <div class="issue-content">
+                        <div class="issue-title" onclick="editIssueModal(${issue.id})">#${issue.id} ${issue.title}</div>
+                        <div class="issue-description">${issue.description}</div>
+                        <div class="issue-meta">
+                            <span class="label-badge label-${issue.label}">${getLabelText(issue.label)}</span>
+                            <span class="status-badge status-${issue.status}">${issue.status === 'open' ? '열림' : '닫힘'}</span>
+                            <span>${issue.createdDate}</span>
+                        </div>
+                    </div>
+                    <div class="issue-actions">
+                        <button class="btn btn-secondary" onclick="toggleIssueStatus(${issue.id})" style="font-size: 12px; padding: 6px 12px;">
+                            ${issue.status === 'open' ? '닫기' : '열기'}
+                        </button>
+                        <button class="btn btn-danger" onclick="deleteIssue(${issue.id})">삭제</button>
+                    </div>
+                </div>
+            `).join('');
+
+            document.getElementById('issuesList').innerHTML = html || '<p style="color: #999; text-align: center;">Issues가 없습니다.</p>';
+
+            // Issues 통계 업데이트
+            document.getElementById('statIssues').textContent = appData.issues.filter(i => i.status === 'open').length;
+        }
+
+        function getLabelText(label) {
+            const labels = {
+                'bug': '🐛 버그',
+                'feature': '✨ 기능',
+                'task': '📋 작업',
+                'improvement': '⬆️ 개선'
+            };
+            return labels[label] || label;
+        }
+
+        function filterIssues(filter) {
+            currentFilter = filter;
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            renderIssues();
         }
 
         // 진행률 업데이트
@@ -848,6 +1036,79 @@
             document.getElementById('modal').style.display = 'flex';
         }
 
+        // Issue 추가
+        function addIssueModal() {
+            modalType = 'addIssue';
+            document.getElementById('modalTitle').textContent = 'Issue 생성';
+            document.getElementById('modalContent').innerHTML = `
+                <div class="form-group">
+                    <label>제목</label>
+                    <input type="text" id="issueTitle" placeholder="예: 캘린더 날짜 클릭 안 됨">
+                </div>
+                <div class="form-group">
+                    <label>설명</label>
+                    <textarea id="issueDesc" placeholder="자세한 설명을 입력하세요"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>라벨</label>
+                    <select id="issueLabel">
+                        <option value="bug">🐛 버그</option>
+                        <option value="feature">✨ 기능</option>
+                        <option value="task">📋 작업</option>
+                        <option value="improvement">⬆️ 개선</option>
+                    </select>
+                </div>
+            `;
+            document.getElementById('modal').style.display = 'flex';
+        }
+
+        // Issue 수정
+        function editIssueModal(id) {
+            const issue = appData.issues.find(i => i.id === id);
+            if (!issue) return;
+
+            modalType = 'editIssue';
+            document.getElementById('modalTitle').textContent = 'Issue 수정';
+            document.getElementById('modalContent').innerHTML = `
+                <div class="form-group">
+                    <label>제목</label>
+                    <input type="text" id="issueTitle" value="${issue.title}">
+                </div>
+                <div class="form-group">
+                    <label>설명</label>
+                    <textarea id="issueDesc">${issue.description}</textarea>
+                </div>
+                <div class="form-group">
+                    <label>라벨</label>
+                    <select id="issueLabel">
+                        <option value="bug" ${issue.label === 'bug' ? 'selected' : ''}>🐛 버그</option>
+                        <option value="feature" ${issue.label === 'feature' ? 'selected' : ''}>✨ 기능</option>
+                        <option value="task" ${issue.label === 'task' ? 'selected' : ''}>📋 작업</option>
+                        <option value="improvement" ${issue.label === 'improvement' ? 'selected' : ''}>⬆️ 개선</option>
+                    </select>
+                </div>
+                <input type="hidden" id="editIssueId" value="${id}">
+            `;
+            document.getElementById('modal').style.display = 'flex';
+        }
+
+        // Issue 상태 토글
+        function toggleIssueStatus(id) {
+            const issue = appData.issues.find(i => i.id === id);
+            if (issue) {
+                issue.status = issue.status === 'open' ? 'closed' : 'open';
+                saveData();
+            }
+        }
+
+        // Issue 삭제
+        function deleteIssue(id) {
+            if (confirm('이 Issue를 삭제하시겠습니까?')) {
+                appData.issues = appData.issues.filter(i => i.id !== id);
+                saveData();
+            }
+        }
+
         // 문서 추가
         function addDocumentModal() {
             modalType = 'addDocument';
@@ -886,6 +1147,34 @@
                         date: date,
                         completed: false
                     });
+                    saveData();
+                    closeModal();
+                }
+            } else if (modalType === 'addIssue') {
+                const title = document.getElementById('issueTitle').value;
+                const desc = document.getElementById('issueDesc').value;
+                const label = document.getElementById('issueLabel').value;
+
+                if (title.trim()) {
+                    const issueId = appData.issues.length > 0 ? Math.max(...appData.issues.map(i => i.id)) + 1 : 1;
+                    appData.issues.push({
+                        id: issueId,
+                        title: title,
+                        description: desc,
+                        label: label,
+                        status: 'open',
+                        createdDate: new Date().toLocaleDateString('ko-KR')
+                    });
+                    saveData();
+                    closeModal();
+                }
+            } else if (modalType === 'editIssue') {
+                const issueId = parseInt(document.getElementById('editIssueId').value);
+                const issue = appData.issues.find(i => i.id === issueId);
+                if (issue) {
+                    issue.title = document.getElementById('issueTitle').value;
+                    issue.description = document.getElementById('issueDesc').value;
+                    issue.label = document.getElementById('issueLabel').value;
                     saveData();
                     closeModal();
                 }
@@ -968,6 +1257,10 @@
                     { id: 2, name: '수질 점검 보고', category: 'env', date: '2026-06-15', completed: false },
                     { id: 3, name: '산업안전 교육', category: 'safety', date: '2026-06-20', completed: true },
                     { id: 4, name: '유해화학물질 점검', category: 'psm', date: '2026-06-25', completed: false }
+                ];
+                appData.issues = [
+                    { id: 1, title: '캘린더 날짜 클릭 시 이벤트 추가 안 됨', description: '사용자가 캘린더에서 날짜를 클릭해도 반응 없음', label: 'bug', status: 'open', createdDate: '2026-06-11' },
+                    { id: 2, title: 'Excel 파일 자동 업로드 기능 추가', description: '팀원들이 Excel에서 작업하므로 파일 업로드 가능하게', label: 'feature', status: 'open', createdDate: '2026-06-11' }
                 ];
                 appData.documents = [
                     { id: 1, name: '대기배출 기준', icon: '⚖️' },
