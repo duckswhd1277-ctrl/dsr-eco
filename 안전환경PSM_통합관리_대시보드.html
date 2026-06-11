@@ -131,53 +131,102 @@
             color: #666;
         }
 
-        .calendar {
+        /* 새로운 달력 그리드 스타일 */
+        .calendar-container {
             width: 100%;
-            border-collapse: collapse;
-            font-size: 13px;
         }
 
-        .calendar th {
+        .calendar-weekdays {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1px;
+            background: #ddd;
+            margin-bottom: 1px;
+        }
+
+        .calendar-weekday {
             background: #f0f0f0;
-            padding: 10px;
+            padding: 12px;
             text-align: center;
             font-weight: 600;
             color: #333;
-            border: 1px solid #ddd;
+            font-size: 14px;
+            text-transform: uppercase;
         }
 
-        .calendar td {
-            border: 1px solid #ddd;
+        .calendar-weekday.sunday {
+            color: #ef4444;
+        }
+
+        .calendar-weekday.saturday {
+            color: #3b82f6;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1px;
+            background: #ddd;
+        }
+
+        .calendar-day {
+            background: white;
+            min-height: 120px;
             padding: 8px;
-            text-align: center;
-            min-height: 60px;
+            text-align: left;
             vertical-align: top;
             position: relative;
+            overflow: hidden;
         }
 
-        .calendar td.other-month {
+        .calendar-day.other-month {
             background: #fafafa;
             color: #ccc;
         }
 
-        .calendar td.today {
+        .calendar-day.today {
             background: #fffbeb;
         }
 
+        .calendar-day.sunday {
+            background: #fff5f5;
+        }
+
+        .calendar-day.saturday {
+            background: #f0f9ff;
+        }
+
         .calendar-date {
-            font-weight: 600;
+            font-weight: 700;
             color: #1a1a1a;
-            display: block;
-            margin-bottom: 4px;
+            margin-bottom: 6px;
+            font-size: 15px;
+        }
+
+        .calendar-day.sunday .calendar-date {
+            color: #ef4444;
+        }
+
+        .calendar-day.saturday .calendar-date {
+            color: #3b82f6;
+        }
+
+        .calendar-events {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
         }
 
         .calendar-event {
             font-size: 11px;
-            padding: 2px 4px;
-            margin: 2px 0;
+            padding: 3px 6px;
             border-radius: 3px;
             color: white;
             word-break: break-word;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-weight: 500;
         }
 
         .calendar-event.env {
@@ -493,17 +542,24 @@
                 grid-template-columns: 1fr;
             }
 
-            .calendar {
-                font-size: 11px;
+            .calendar-weekday {
+                font-size: 12px;
+                padding: 8px;
             }
 
-            .calendar td {
-                padding: 4px;
-                min-height: 50px;
+            .calendar-day {
+                min-height: 80px;
+                padding: 6px;
+                font-size: 12px;
+            }
+
+            .calendar-date {
+                font-size: 13px;
             }
 
             .calendar-event {
                 font-size: 10px;
+                padding: 2px 4px;
             }
 
             .month-nav {
@@ -648,7 +704,7 @@
                     <span class="month-display" id="monthDisplay">2026년 6월</span>
                     <button onclick="nextMonth()">다음 ▶</button>
                 </div>
-                <table class="calendar" id="calendar"></table>
+                <div class="calendar-container" id="calendar"></div>
             </div>
         </div>
 
@@ -817,49 +873,80 @@
         // 캘린더 셀 높이 동적 조정
         function adjustCalendarHeights() {
             const calendar = document.getElementById('calendar');
-            const cells = calendar.querySelectorAll('tbody td');
+            const cells = calendar.querySelectorAll('.calendar-day');
 
             cells.forEach(cell => {
                 const eventCount = cell.querySelectorAll('.calendar-event').length;
-                const baseHeight = 60;
-                const eventHeight = 22;
+                const baseHeight = 120;
+                const eventHeight = 20;
                 const totalHeight = baseHeight + (eventCount * eventHeight);
 
                 cell.style.minHeight = totalHeight + 'px';
             });
         }
 
-        // 캘린더 렌더링
+        // 캘린더 렌더링 (한국식 그리드 형식)
         function renderCalendar() {
             const year = currentMonth.getFullYear();
             const month = currentMonth.getMonth();
 
-            document.getElementById('monthDisplay').textContent = `${year}년 ${month + 1}월`;
+            document.getElementById('monthDisplay').textContent = `${year}.${String(month + 1).padStart(2, '0')}`;
 
             const firstDay = new Date(year, month, 1);
             const lastDay = new Date(year, month + 1, 0);
             const prevLastDay = new Date(year, month, 0);
 
-            let html = '<tr><th>일</th><th>월</th><th>화</th><th>수</th><th>목</th><th>금</th><th>토</th></tr>';
+            // 요일 헤더 생성
+            const weekdayNames = ['일', '월', '화', '수', '목', '금', '토'];
+            let weekdayHtml = '';
+            weekdayNames.forEach((name, index) => {
+                const classes = index === 0 ? 'calendar-weekday sunday' : index === 6 ? 'calendar-weekday saturday' : 'calendar-weekday';
+                weekdayHtml += `<div class="${classes}">${name}</div>`;
+            });
 
+            // 달력 셀 생성
+            let calendarHtml = '';
+
+            // 지난 달 날짜
             for (let i = prevLastDay.getDate() - firstDay.getDay() + 1; i <= prevLastDay.getDate(); i++) {
-                html += `<td class="other-month">${i}</td>`;
+                calendarHtml += `<div class="calendar-day other-month"><span class="calendar-date">${i}</span></div>`;
             }
 
+            // 이번 달 날짜
             for (let i = 1; i <= lastDay.getDate(); i++) {
+                const date = new Date(year, month, i);
+                const dayOfWeek = date.getDay();
                 const isToday = i === new Date().getDate() && month === new Date().getMonth() && year === new Date().getFullYear();
-                html += `<td class="${isToday ? 'today' : ''}">
-                    <span class="calendar-date">${i}</span>
-                    <div id="events-${i}"></div>
-                </td>`;
+
+                let dayClasses = 'calendar-day';
+                if (isToday) dayClasses += ' today';
+                if (dayOfWeek === 0) dayClasses += ' sunday';
+                if (dayOfWeek === 6) dayClasses += ' saturday';
+
+                calendarHtml += `<div class="${dayClasses}">
+                    <div class="calendar-date">${i}</div>
+                    <div class="calendar-events" id="events-${i}"></div>
+                </div>`;
             }
 
-            for (let i = 1; i <= 6 * 7 - lastDay.getDate() - firstDay.getDay(); i++) {
-                html += `<td class="other-month">${i}</td>`;
+            // 다음 달 날짜
+            const remainingDays = 6 * 7 - lastDay.getDate() - firstDay.getDay();
+            for (let i = 1; i <= remainingDays; i++) {
+                const date = new Date(year, month + 1, i);
+                const dayOfWeek = date.getDay();
+
+                let dayClasses = 'calendar-day other-month';
+                if (dayOfWeek === 0) dayClasses += ' sunday';
+                if (dayOfWeek === 6) dayClasses += ' saturday';
+
+                calendarHtml += `<div class="${dayClasses}"><span class="calendar-date">${i}</span></div>`;
             }
 
-            document.getElementById('calendar').innerHTML = html;
+            // HTML 업데이트
+            const calendarEl = document.getElementById('calendar');
+            calendarEl.innerHTML = `<div class="calendar-weekdays">${weekdayHtml}</div><div class="calendar-grid">${calendarHtml}</div>`;
 
+            // 이벤트 추가
             appData.tasks.forEach(task => {
                 if (task.date) {
                     const date = new Date(task.date);
