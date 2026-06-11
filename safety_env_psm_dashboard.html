@@ -215,6 +215,21 @@
             display: flex;
             flex-direction: column;
             gap: 3px;
+            max-height: 90px;
+            overflow-y: auto;
+        }
+
+        .calendar-events::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .calendar-events::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .calendar-events::-webkit-scrollbar-thumb {
+            background: #ccc;
+            border-radius: 2px;
         }
 
         .calendar-event {
@@ -709,11 +724,11 @@
             <div class="card">
                 <div class="card-title">✅ 할일 관리</div>
 
-                <div class="tabs">
-                    <button class="tab active" onclick="switchTab('task-all')">전체</button>
-                    <button class="tab" onclick="switchTab('task-env')">환경</button>
-                    <button class="tab" onclick="switchTab('task-safety')">안전</button>
-                    <button class="tab" onclick="switchTab('task-psm')">PSM</button>
+                <div class="tabs" role="tablist" aria-label="할일 카테고리">
+                    <button class="tab active" onclick="switchTab('task-all')" role="tab" aria-selected="true" aria-controls="task-all">전체</button>
+                    <button class="tab" onclick="switchTab('task-env')" role="tab" aria-selected="false" aria-controls="task-env">환경</button>
+                    <button class="tab" onclick="switchTab('task-safety')" role="tab" aria-selected="false" aria-controls="task-safety">안전</button>
+                    <button class="tab" onclick="switchTab('task-psm')" role="tab" aria-selected="false" aria-controls="task-psm">PSM</button>
                 </div>
 
                 <div id="task-all" class="tab-content active">
@@ -778,13 +793,13 @@
     </div>
 
     <!-- 모달 -->
-    <div id="modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; overflow-y: auto;">
+    <div id="modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; overflow-y: auto;" role="dialog" aria-labelledby="modalTitle" aria-modal="true">
         <div style="background: white; border-radius: 12px; padding: 2rem; max-width: 500px; width: 90%; margin: 2rem auto;">
             <h2 style="margin-bottom: 1rem;" id="modalTitle">새 항목 추가</h2>
             <div id="modalContent"></div>
             <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
-                <button class="btn btn-secondary" onclick="closeModal()" style="flex: 1;">취소</button>
-                <button class="btn btn-primary" onclick="saveModal()" style="flex: 1;">저장</button>
+                <button class="btn btn-secondary" onclick="closeModal()" style="flex: 1;" aria-label="모달 취소">취소</button>
+                <button class="btn btn-primary" onclick="saveModal()" style="flex: 1;" aria-label="모달 저장">저장</button>
             </div>
         </div>
     </div>
@@ -937,14 +952,14 @@
                 listEl.innerHTML = filtered.map(task => `
                     <div class="checkbox-item" style="display: flex; justify-content: space-between; align-items: center;">
                         <div style="display: flex; align-items: center; gap: 10px; flex: 1;">
-                            <input type="checkbox" ${task.completed ? 'checked' : ''} onchange="toggleTask(${task.id})">
+                            <input type="checkbox" ${task.completed ? 'checked' : ''} onchange="toggleTask(${task.id})" aria-label="${task.name} 완료 여부">
                             <label>${task.name}</label>
                         </div>
-                        <span class="status-badge ${task.completed ? 'status-completed' : 'status-pending'}">
+                        <span class="status-badge ${task.completed ? 'status-completed' : 'status-pending'}" aria-label="상태: ${task.completed ? '완료' : '진행중'}">
                             ${task.completed ? '완료' : '진행중'}
                         </span>
-                        <button onclick="editTask(${task.id})" style="padding: 4px 8px; font-size: 12px; margin: 0 4px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer;">수정</button>
-                        <button onclick="deleteTask(${task.id})" style="padding: 4px 8px; font-size: 12px; background: #ef4444; color: white; border: none; border-radius: 4px; cursor: pointer;">삭제</button>
+                        <button onclick="editTask(${task.id})" style="padding: 4px 8px; font-size: 12px; margin: 0 4px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer;" aria-label="${task.name} 수정">수정</button>
+                        <button onclick="deleteTask(${task.id})" style="padding: 4px 8px; font-size: 12px; background: #ef4444; color: white; border: none; border-radius: 4px; cursor: pointer;" aria-label="${task.name} 삭제">삭제</button>
                     </div>
                 `).join('');
             });
@@ -994,8 +1009,8 @@
         function renderDocuments() {
             const listEl = document.getElementById('documentsList');
             listEl.innerHTML = appData.documents.map(doc => `
-                <div class="document-card" onclick="downloadDocument('${doc.id}')">
-                    <div class="document-icon">${doc.icon}</div>
+                <div class="document-card" onclick="downloadDocument('${doc.id}')" role="button" tabindex="0" aria-label="${doc.name} 문서 다운로드" onkeypress="if(event.key==='Enter') downloadDocument('${doc.id}')">
+                    <div class="document-icon" aria-hidden="true">${doc.icon}</div>
                     <div class="document-name">${doc.name}</div>
                 </div>
             `).join('');
@@ -1240,10 +1255,14 @@
 
         // 탭 전환
         function switchTab(tabName) {
-            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+                tab.setAttribute('aria-selected', 'false');
+            });
             document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
 
             event.target.classList.add('active');
+            event.target.setAttribute('aria-selected', 'true');
             document.getElementById(tabName).classList.add('active');
         }
 
