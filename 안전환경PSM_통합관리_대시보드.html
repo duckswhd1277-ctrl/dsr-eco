@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>안전/환경/PSM 통합 관리 대시보드</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #1a1a1a;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 28px;
+            color: #667eea;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: #1a1a1a;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .progress-section {
+            margin-bottom: 2rem;
+        }
+
+        .progress-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #333;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 24px;
+            background: #f0f0f0;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 0.5rem;
+            position: relative;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 600;
+            color: white;
+            transition: width 0.3s ease;
+        }
+
+        .progress-env .progress-fill {
+            background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+        }
+
+        .progress-safety .progress-fill {
+            background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%);
+        }
+
+        .progress-psm .progress-fill {
+            background: linear-gradient(90deg, #3b82f6 0%, #1d4ed8 100%);
+        }
+
+        .progress-total .progress-fill {
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .progress-percent {
+            text-align: right;
+            font-size: 13px;
+            font-weight: 600;
+            color: #666;
+        }
+
+        .calendar {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .calendar th {
+            background: #f0f0f0;
+            padding: 10px;
+            text-align: center;
+            font-weight: 600;
+            color: #333;
+            border: 1px solid #ddd;
+        }
+
+        .calendar td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+            height: 60px;
+            vertical-align: top;
+            position: relative;
+        }
+
+        .calendar td.other-month {
+            background: #fafafa;
+            color: #ccc;
+        }
+
+        .calendar td.today {
+            background: #fffbeb;
+        }
+
+        .calendar-date {
+            font-weight: 600;
+            color: #1a1a1a;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .calendar-event {
+            font-size: 11px;
+            padding: 2px 4px;
+            margin: 2px 0;
+            border-radius: 3px;
+            color: white;
+            word-break: break-word;
+        }
+
+        .calendar-event.env {
+            background: #10b981;
+        }
+
+        .calendar-event.safety {
+            background: #f59e0b;
+        }
+
+        .calendar-event.psm {
+            background: #3b82f6;
+        }
+
+        .calendar-event.custom {
+            background: #8b5cf6;
+        }
+
+        .month-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .month-nav button {
+            background: #f0f0f0;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            color: #667eea;
+            transition: background 0.2s;
+        }
+
+        .month-nav button:hover {
+            background: #e0e0e0;
+        }
+
+        .month-display {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            color: #999;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .checkbox-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: #f9f9f9;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .checkbox-item:hover {
+            background: #f0f0f0;
+        }
+
+        .checkbox-item input {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            accent-color: #667eea;
+        }
+
+        .checkbox-item label {
+            flex: 1;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .checkbox-item input:checked ~ label {
+            color: #10b981;
+            font-weight: 600;
+        }
+
+        .button-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        button.btn {
+            padding: 12px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #667eea;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .event-form {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            padding: 1rem;
+            background: #f9f9f9;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .form-group label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 14px;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 60px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .status-completed {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .documents-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 1rem;
+        }
+
+        .document-card {
+            background: #f0f0f0;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .document-card:hover {
+            border-color: #667eea;
+            background: #f8f7ff;
+        }
+
+        .document-icon {
+            font-size: 32px;
+            margin-bottom: 0.5rem;
+        }
+
+        .document-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: #333;
+            word-break: break-word;
+        }
+
+        .settings-section {
+            margin-bottom: 2rem;
+            padding: 1rem;
+            background: #f9f9f9;
+            border-radius: 6px;
+        }
+
+        .settings-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: #333;
+        }
+
+        .deadline-item {
+            display: grid;
+            grid-template-columns: 1fr 100px 1fr;
+            gap: 1rem;
+            align-items: center;
+            padding: 0.75rem;
+            background: white;
+            border-radius: 6px;
+            margin-bottom: 0.75rem;
+            border: 1px solid #ddd;
+        }
+
+        .deadline-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .deadline-input {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .deadline-remove {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        @media (max-width: 1024px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .mini-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #999;
+        }
+
+        .stat-env .stat-value { color: #10b981; }
+        .stat-safety .stat-value { color: #f59e0b; }
+        .stat-psm .stat-value { color: #3b82f6; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 헤더 -->
+        <div class="header">
+            <h1>⚙️ 안전/환경/PSM 통합 관리 대시보드</h1>
+            <p>순천 율촌산단 철강선 제조업 | 총무관리팀</p>
+        </div>
+
+        <!-- 미니 통계 -->
+        <div class="mini-stats">
+            <div class="stat-card stat-env">
+                <div class="stat-value" id="statEnv">0/0</div>
+                <div class="stat-label">환경 관리</div>
+            </div>
+            <div class="stat-card stat-safety">
+                <div class="stat-value" id="statSafety">0/0</div>
+                <div class="stat-label">안전 관리</div>
+            </div>
+            <div class="stat-card stat-psm">
+                <div class="stat-value" id="statPsm">0/0</div>
+                <div class="stat-label">PSM 관리</div>
+            </div>
+        </div>
+
+        <!-- 진행률 -->
+        <div class="card">
+            <div class="card-title">📊 월간 진행률</div>
+
+            <div class="progress-section progress-env">
+                <div class="progress-title">환경 관리</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressEnv" style="width: 0%;">0%</div>
+                </div>
+                <div class="progress-percent" id="percentEnv">0/0</div>
+            </div>
+
+            <div class="progress-section progress-safety">
+                <div class="progress-title">안전 관리</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressSafety" style="width: 0%;">0%</div>
+                </div>
+                <div class="progress-percent" id="percentSafety">0/0</div>
+            </div>
+
+            <div class="progress-section progress-psm">
+                <div class="progress-title">PSM 관리</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressPsm" style="width: 0%;">0%</div>
+                </div>
+                <div class="progress-percent" id="percentPsm">0/0</div>
+            </div>
+
+            <div class="progress-section progress-total">
+                <div class="progress-title">🎯 전체 진행률</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressTotal" style="width: 0%;">0%</div>
+                </div>
+                <div class="progress-percent" id="percentTotal">0/0</div>
+            </div>
+        </div>
+
+        <!-- 메인 대시보드 -->
+        <div class="dashboard-grid">
+            <!-- 캘린더 -->
+            <div class="card">
+                <div class="card-title">📅 월간 캘린더</div>
+                <div class="month-nav">
+                    <button onclick="prevMonth()">◀ 이전</button>
+                    <span class="month-display" id="monthDisplay">2026년 6월</span>
+                    <button onclick="nextMonth()">다음 ▶</button>
+                </div>
+                <table class="calendar" id="calendar"></table>
+            </div>
+
+            <!-- 할일 관리 -->
+            <div class="card">
+                <div class="card-title">✅ 할일 관리</div>
+
+                <div class="tabs">
+                    <button class="tab active" onclick="switchTab('task-all')">전체</button>
+                    <button class="tab" onclick="switchTab('task-env')">환경</button>
+                    <button class="tab" onclick="switchTab('task-safety')">안전</button>
+                    <button class="tab" onclick="switchTab('task-psm')">PSM</button>
+                </div>
+
+                <div id="task-all" class="tab-content active">
+                    <div class="checkbox-list" id="taskListAll"></div>
+                </div>
+                <div id="task-env" class="tab-content">
+                    <div class="checkbox-list" id="taskListEnv"></div>
+                </div>
+                <div id="task-safety" class="tab-content">
+                    <div class="checkbox-list" id="taskListSafety"></div>
+                </div>
+                <div id="task-psm" class="tab-content">
+                    <div class="checkbox-list" id="taskListPsm"></div>
+                </div>
+
+                <button class="btn btn-secondary" onclick="addTaskModal()" style="width: 100%; margin-top: 1rem;">➕ 새 항목 추가</button>
+            </div>
+        </div>
+
+        <!-- 추가 기능 -->
+        <div class="dashboard-grid" style="margin-top: 2rem;">
+            <!-- 문서 라이브러리 -->
+            <div class="card">
+                <div class="card-title">📚 문서 라이브러리</div>
+                <div class="documents-grid" id="documentsList"></div>
+                <button class="btn btn-secondary" onclick="addDocumentModal()" style="width: 100%; margin-top: 1rem;">➕ 문서 추가</button>
+            </div>
+
+            <!-- 설정 -->
+            <div class="card">
+                <div class="card-title">⚙️ 제출 기한 설정</div>
+                <div class="settings-section">
+                    <div class="settings-title">환경 관리</div>
+                    <div class="deadline-item">
+                        <span class="deadline-label">환경 제출 기한:</span>
+                        <input type="text" class="deadline-input" id="deadlineEnv" placeholder="예: 매월 말일" value="매월 말일">
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <div class="settings-title">안전 관리</div>
+                    <div class="deadline-item">
+                        <span class="deadline-label">안전 제출 기한:</span>
+                        <input type="text" class="deadline-input" id="deadlineSafety" placeholder="예: 매월 15일" value="매월 15일">
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <div class="settings-title">PSM 관리</div>
+                    <div class="deadline-item">
+                        <span class="deadline-label">PSM 제출 기한:</span>
+                        <input type="text" class="deadline-input" id="deadlinePsm" placeholder="예: 월중순" value="월중순">
+                    </div>
+                </div>
+
+                <button class="btn btn-primary" onclick="saveSettings()" style="width: 100%; margin-top: 1rem;">💾 설정 저장</button>
+                <button class="btn btn-secondary" onclick="exportData()" style="width: 100%; margin-top: 0.5rem;">📥 데이터 내보내기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 모달 -->
+    <div id="modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+        <div style="background: white; border-radius: 12px; padding: 2rem; max-width: 500px; width: 90%;">
+            <h2 style="margin-bottom: 1rem;" id="modalTitle">새 항목 추가</h2>
+            <div id="modalContent"></div>
+            <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                <button class="btn btn-secondary" onclick="closeModal()" style="flex: 1;">취소</button>
+                <button class="btn btn-primary" onclick="saveModal()" style="flex: 1;">저장</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 데이터 저장소
+        let appData = {
+            tasks: [],
+            documents: [],
+            settings: {
+                env: '매월 말일',
+                safety: '매월 15일',
+                psm: '월중순'
+            }
+        };
+
+        let currentMonth = new Date();
+        let modalType = '';
+
+        // 초기화
+        function init() {
+            loadData();
+            renderCalendar();
+            renderTasks();
+            renderDocuments();
+            updateProgress();
+        }
+
+        // 데이터 로드
+        function loadData() {
+            const saved = localStorage.getItem('dashboardData');
+            if (saved) {
+                appData = JSON.parse(saved);
+            }
+        }
+
+        // 데이터 저장
+        function saveData() {
+            localStorage.setItem('dashboardData', JSON.stringify(appData));
+            updateProgress();
+            renderTasks();
+            renderCalendar();
+        }
+
+        // 캘린더 렌더링
+        function renderCalendar() {
+            const year = currentMonth.getFullYear();
+            const month = currentMonth.getMonth();
+
+            document.getElementById('monthDisplay').textContent = `${year}년 ${month + 1}월`;
+
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const prevLastDay = new Date(year, month, 0);
+
+            let html = '<tr><th>일</th><th>월</th><th>화</th><th>수</th><th>목</th><th>금</th><th>토</th></tr>';
+
+            // 이전 달 날짜
+            for (let i = prevLastDay.getDate() - firstDay.getDay() + 1; i <= prevLastDay.getDate(); i++) {
+                html += `<td class="other-month">${i}</td>`;
+            }
+
+            // 현재 달 날짜
+            for (let i = 1; i <= lastDay.getDate(); i++) {
+                const isToday = i === new Date().getDate() && month === new Date().getMonth() && year === new Date().getFullYear();
+                html += `<td class="${isToday ? 'today' : ''}">
+                    <span class="calendar-date">${i}</span>
+                    <div id="events-${i}"></div>
+                </td>`;
+            }
+
+            // 다음 달 날짜
+            for (let i = 1; i <= 6 * 7 - lastDay.getDate() - firstDay.getDay(); i++) {
+                html += `<td class="other-month">${i}</td>`;
+            }
+
+            document.getElementById('calendar').innerHTML = html;
+
+            // 이벤트 배치
+            appData.tasks.forEach(task => {
+                if (task.date) {
+                    const date = new Date(task.date);
+                    if (date.getFullYear() === year && date.getMonth() === month) {
+                        const day = date.getDate();
+                        const el = document.getElementById(`events-${day}`);
+                        if (el) {
+                            const statusClass = task.completed ? 'completed' : 'pending';
+                            el.innerHTML += `<div class="calendar-event ${task.category}" title="${task.name}">${task.name}</div>`;
+                        }
+                    }
+                }
+            });
+        }
+
+        // 태스크 렌더링
+        function renderTasks() {
+            const categories = ['all', 'env', 'safety', 'psm'];
+            categories.forEach(cat => {
+                const listEl = document.getElementById(`taskList${cat.charAt(0).toUpperCase() + cat.slice(1)}`);
+                if (!listEl) return;
+
+                const filtered = cat === 'all' ? appData.tasks : appData.tasks.filter(t => t.category === cat);
+
+                listEl.innerHTML = filtered.map(task => `
+                    <div class="checkbox-item">
+                        <input type="checkbox" ${task.completed ? 'checked' : ''} onchange="toggleTask(${task.id})">
+                        <label>${task.name}</label>
+                        <span class="status-badge ${task.completed ? 'status-completed' : 'status-pending'}">
+                            ${task.completed ? '완료' : '진행중'}
+                        </span>
+                    </div>
+                `).join('');
+            });
+        }
+
+        // 진행률 업데이트
+        function updateProgress() {
+            const updateProgressBar = (category) => {
+                const tasks = appData.tasks.filter(t => t.category === category);
+                const completed = tasks.filter(t => t.completed).length;
+                const total = tasks.length;
+                const percent = total === 0 ? 0 : Math.round((completed / total) * 100);
+
+                const progressEl = document.getElementById(`progress${category.charAt(0).toUpperCase() + category.slice(1)}`);
+                const percentEl = document.getElementById(`percent${category.charAt(0).toUpperCase() + category.slice(1)}`);
+                const statEl = document.getElementById(`stat${category.charAt(0).toUpperCase() + category.slice(1)}`);
+
+                if (progressEl) {
+                    progressEl.style.width = percent + '%';
+                    progressEl.textContent = percent + '%';
+                }
+                if (percentEl) percentEl.textContent = `${completed}/${total}`;
+                if (statEl) statEl.textContent = `${completed}/${total}`;
+
+                return { completed, total, percent };
+            };
+
+            const env = updateProgressBar('env');
+            const safety = updateProgressBar('safety');
+            const psm = updateProgressBar('psm');
+
+            const totalTasks = env.total + safety.total + psm.total;
+            const totalCompleted = env.completed + safety.completed + psm.completed;
+            const totalPercent = totalTasks === 0 ? 0 : Math.round((totalCompleted / totalTasks) * 100);
+
+            const progressTotal = document.getElementById('progressTotal');
+            const percentTotal = document.getElementById('percentTotal');
+
+            if (progressTotal) {
+                progressTotal.style.width = totalPercent + '%';
+                progressTotal.textContent = totalPercent + '%';
+            }
+            if (percentTotal) percentTotal.textContent = `${totalCompleted}/${totalTasks}`;
+        }
+
+        // 문서 렌더링
+        function renderDocuments() {
+            const listEl = document.getElementById('documentsList');
+            listEl.innerHTML = appData.documents.map(doc => `
+                <div class="document-card" onclick="downloadDocument('${doc.id}')">
+                    <div class="document-icon">${doc.icon}</div>
+                    <div class="document-name">${doc.name}</div>
+                </div>
+            `).join('');
+        }
+
+        // 태스크 토글
+        function toggleTask(id) {
+            const task = appData.tasks.find(t => t.id === id);
+            if (task) {
+                task.completed = !task.completed;
+                saveData();
+            }
+        }
+
+        // 태스크 추가
+        function addTaskModal() {
+            modalType = 'addTask';
+            document.getElementById('modalTitle').textContent = '새 항목 추가';
+            document.getElementById('modalContent').innerHTML = `
+                <div class="form-group">
+                    <label>항목명</label>
+                    <input type="text" id="taskName" placeholder="예: 대기배출 자료 제출">
+                </div>
+                <div class="form-group">
+                    <label>분류</label>
+                    <select id="taskCategory">
+                        <option value="env">환경</option>
+                        <option value="safety">안전</option>
+                        <option value="psm">PSM</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>날짜</label>
+                    <input type="date" id="taskDate">
+                </div>
+            `;
+            document.getElementById('modal').style.display = 'flex';
+        }
+
+        // 문서 추가
+        function addDocumentModal() {
+            modalType = 'addDocument';
+            document.getElementById('modalTitle').textContent = '문서 추가';
+            document.getElementById('modalContent').innerHTML = `
+                <div class="form-group">
+                    <label>문서명</label>
+                    <input type="text" id="docName" placeholder="예: 대기배출 점검 기준">
+                </div>
+                <div class="form-group">
+                    <label>아이콘</label>
+                    <select id="docIcon">
+                        <option value="📄">📄 일반 문서</option>
+                        <option value="📋">📋 양식</option>
+                        <option value="📖">📖 가이드</option>
+                        <option value="⚖️">⚖️ 법규</option>
+                        <option value="✅">✅ 체크리스트</option>
+                    </select>
+                </div>
+            `;
+            document.getElementById('modal').style.display = 'flex';
+        }
+
+        // 모달 저장
+        function saveModal() {
+            if (modalType === 'addTask') {
+                const name = document.getElementById('taskName').value;
+                const category = document.getElementById('taskCategory').value;
+                const date = document.getElementById('taskDate').value;
+
+                if (name.trim()) {
+                    appData.tasks.push({
+                        id: Date.now(),
+                        name: name,
+                        category: category,
+                        date: date,
+                        completed: false
+                    });
+                    saveData();
+                    closeModal();
+                }
+            } else if (modalType === 'addDocument') {
+                const name = document.getElementById('docName').value;
+                const icon = document.getElementById('docIcon').value;
+
+                if (name.trim()) {
+                    appData.documents.push({
+                        id: Date.now(),
+                        name: name,
+                        icon: icon
+                    });
+                    saveData();
+                    renderDocuments();
+                    closeModal();
+                }
+            }
+        }
+
+        // 모달 닫기
+        function closeModal() {
+            document.getElementById('modal').style.display = 'none';
+        }
+
+        // 탭 전환
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+            event.target.classList.add('active');
+            document.getElementById(tabName).classList.add('active');
+        }
+
+        // 월 이동
+        function prevMonth() {
+            currentMonth.setMonth(currentMonth.getMonth() - 1);
+            renderCalendar();
+        }
+
+        function nextMonth() {
+            currentMonth.setMonth(currentMonth.getMonth() + 1);
+            renderCalendar();
+        }
+
+        // 설정 저장
+        function saveSettings() {
+            appData.settings.env = document.getElementById('deadlineEnv').value;
+            appData.settings.safety = document.getElementById('deadlineSafety').value;
+            appData.settings.psm = document.getElementById('deadlinePsm').value;
+            saveData();
+            alert('설정이 저장되었습니다.');
+        }
+
+        // 데이터 내보내기
+        function exportData() {
+            const csv = [
+                ['분류', '항목명', '날짜', '상태'],
+                ...appData.tasks.map(t => [
+                    t.category === 'env' ? '환경' : t.category === 'safety' ? '안전' : 'PSM',
+                    t.name,
+                    t.date || '',
+                    t.completed ? '완료' : '진행중'
+                ])
+            ].map(row => row.join(',')).join('\n');
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `안전환경PSM_관리_${new Date().toISOString().split('T')[0]}.csv`;
+            link.click();
+        }
+
+        // 초기 더미 데이터
+        function addSampleData() {
+            if (appData.tasks.length === 0) {
+                appData.tasks = [
+                    { id: 1, name: '대기배출 자료 제출', category: 'env', date: '2026-06-30', completed: false },
+                    { id: 2, name: '수질 점검 보고', category: 'env', date: '2026-06-15', completed: false },
+                    { id: 3, name: '산업안전 교육', category: 'safety', date: '2026-06-20', completed: true },
+                    { id: 4, name: '유해화학물질 점검', category: 'psm', date: '2026-06-25', completed: false }
+                ];
+                appData.documents = [
+                    { id: 1, name: '대기배출 기준', icon: '⚖️' },
+                    { id: 2, name: '안전 점검표', icon: '✅' },
+                    { id: 3, name: 'PSM 절차서', icon: '📖' }
+                ];
+                saveData();
+            }
+        }
+
+        // 초기화 실행
+        window.addEventListener('load', () => {
+            addSampleData();
+            init();
+        });
+
+        // 모달 외부 클릭 닫기
+        window.addEventListener('click', (e) => {
+            const modal = document.getElementById('modal');
+            if (e.target === modal) {
+                closeModal();
+            }
+        });
+    </script>
+</body>
+</html>
