@@ -528,9 +528,6 @@
                 grid-template-columns: 1fr 1fr;
             }
 
-            .mini-stats {
-                grid-template-columns: repeat(2, 1fr);
-            }
         }
 
         @media (max-width: 768px) {
@@ -641,35 +638,6 @@
             }
         }
 
-        .mini-stats {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 1rem;
-            margin-bottom: 2rem;
-        }
-
-        .stat-card {
-            background: white;
-            border-radius: 8px;
-            padding: 1rem;
-            text-align: center;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
-
-        .stat-value {
-            font-size: 24px;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-        }
-
-        .stat-label {
-            font-size: 12px;
-            color: #999;
-        }
-
-        .stat-env .stat-value { color: #10b981; }
-        .stat-safety .stat-value { color: #f59e0b; }
-        .stat-psm .stat-value { color: #3b82f6; }
     </style>
 </head>
 <body>
@@ -677,27 +645,11 @@
         <!-- 헤더 -->
         <header class="header">
             <h1>⚙️ 안전/환경/PSM 통합 관리 대시보드</h1>
-            <p>순천 율촌산단 철강선 제조업 | 총무관리팀</p>
+            <p>율촌총무관리팀</p>
         </header>
 
         <!-- #7: 제출 기한 경고 영역 -->
         <div id="deadlineWarnings" style="margin-bottom: 2rem;"></div>
-
-        <!-- 미니 통계 -->
-        <div class="mini-stats">
-            <div class="stat-card stat-env">
-                <div class="stat-value" id="statEnv">0/0</div>
-                <div class="stat-label">환경 관리</div>
-            </div>
-            <div class="stat-card stat-safety">
-                <div class="stat-value" id="statSafety">0/0</div>
-                <div class="stat-label">안전 관리</div>
-            </div>
-            <div class="stat-card stat-psm">
-                <div class="stat-value" id="statPsm">0/0</div>
-                <div class="stat-label">PSM 관리</div>
-            </div>
-        </div>
 
         <!-- 캘린더 (풀 너비) -->
         <div class="dashboard-grid full-width">
@@ -777,7 +729,6 @@
                     <div class="checkbox-list" id="taskListPsm"></div>
                 </div>
 
-                <button class="btn btn-secondary" onclick="addTaskModal()" style="width: 100%; margin-top: 1rem;">➕ 새 항목 추가</button>
             </div>
 
             <!-- 문서 라이브러리 -->
@@ -1236,31 +1187,6 @@
             if (doc) {
                 alert(`${doc.name} 문서\n\n(실제 구현 시 다운로드 또는 링크 열기 기능이 추가됩니다)`);
             }
-        }
-
-        // 태스크 추가
-        function addTaskModal() {
-            modalType = 'addTask';
-            document.getElementById('modalTitle').textContent = '새 항목 추가';
-            document.getElementById('modalContent').innerHTML = `
-                <div class="form-group">
-                    <label>항목명</label>
-                    <input type="text" id="taskName" placeholder="예: 대기배출 자료 제출" maxlength="100">
-                </div>
-                <div class="form-group">
-                    <label>분류</label>
-                    <select id="taskCategory">
-                        <option value="env">환경</option>
-                        <option value="safety">안전</option>
-                        <option value="psm">PSM</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>날짜</label>
-                    <input type="date" id="taskDate" required>
-                </div>
-            `;
-            document.getElementById('modal').style.display = 'flex';
         }
 
         // 문서 추가
