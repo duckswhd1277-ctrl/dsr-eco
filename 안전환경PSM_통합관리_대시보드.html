@@ -150,7 +150,7 @@
             border: 1px solid #ddd;
             padding: 8px;
             text-align: center;
-            height: 60px;
+            min-height: 60px;
             vertical-align: top;
             position: relative;
         }
@@ -674,6 +674,21 @@
             renderCalendar();
         }
 
+        // 캘린더 셀 높이 동적 조정
+        function adjustCalendarHeights() {
+            const calendar = document.getElementById('calendar');
+            const cells = calendar.querySelectorAll('tbody td');
+
+            cells.forEach(cell => {
+                const eventCount = cell.querySelectorAll('.calendar-event').length;
+                const baseHeight = 60;
+                const eventHeight = 22;
+                const totalHeight = baseHeight + (eventCount * eventHeight);
+
+                cell.style.minHeight = totalHeight + 'px';
+            });
+        }
+
         // 캘린더 렌더링
         function renderCalendar() {
             const year = currentMonth.getFullYear();
@@ -717,6 +732,9 @@
                     }
                 }
             });
+
+            // 캘린더 셀 높이 동적 조정
+            adjustCalendarHeights();
         }
 
         // 태스크 렌더링
