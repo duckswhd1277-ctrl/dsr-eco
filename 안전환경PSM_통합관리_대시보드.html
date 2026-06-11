@@ -50,6 +50,14 @@
             margin-bottom: 2rem;
         }
 
+        .dashboard-grid.full-width {
+            grid-template-columns: 1fr;
+        }
+
+        .dashboard-grid.three-columns {
+            grid-template-columns: 1fr 1fr 1fr;
+        }
+
         .card {
             background: white;
             border-radius: 12px;
@@ -493,46 +501,8 @@
             </div>
         </div>
 
-        <!-- 진행률 -->
-        <div class="card">
-            <div class="card-title">📊 월간 진행률</div>
-
-            <div class="progress-section progress-env">
-                <div class="progress-title">환경 관리</div>
-                <div class="progress-bar">
-                    <div class="progress-fill" id="progressEnv" style="width: 0%;">0%</div>
-                </div>
-                <div class="progress-percent" id="percentEnv">0/0</div>
-            </div>
-
-            <div class="progress-section progress-safety">
-                <div class="progress-title">안전 관리</div>
-                <div class="progress-bar">
-                    <div class="progress-fill" id="progressSafety" style="width: 0%;">0%</div>
-                </div>
-                <div class="progress-percent" id="percentSafety">0/0</div>
-            </div>
-
-            <div class="progress-section progress-psm">
-                <div class="progress-title">PSM 관리</div>
-                <div class="progress-bar">
-                    <div class="progress-fill" id="progressPsm" style="width: 0%;">0%</div>
-                </div>
-                <div class="progress-percent" id="percentPsm">0/0</div>
-            </div>
-
-            <div class="progress-section progress-total">
-                <div class="progress-title">🎯 전체 진행률</div>
-                <div class="progress-bar">
-                    <div class="progress-fill" id="progressTotal" style="width: 0%;">0%</div>
-                </div>
-                <div class="progress-percent" id="percentTotal">0/0</div>
-            </div>
-        </div>
-
-        <!-- 메인 대시보드 -->
-        <div class="dashboard-grid">
-            <!-- 캘린더 -->
+        <!-- 캘린더 (풀 너비) -->
+        <div class="dashboard-grid full-width">
             <div class="card">
                 <div class="card-title">📅 월간 캘린더</div>
                 <div class="month-nav">
@@ -542,7 +512,49 @@
                 </div>
                 <table class="calendar" id="calendar"></table>
             </div>
+        </div>
 
+        <!-- 진행률 (풀 너비) -->
+        <div class="dashboard-grid full-width">
+            <div class="card">
+                <div class="card-title">📊 월간 진행률</div>
+
+                <div class="progress-section progress-env">
+                    <div class="progress-title">환경 관리</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressEnv" style="width: 0%;">0%</div>
+                    </div>
+                    <div class="progress-percent" id="percentEnv">0/0</div>
+                </div>
+
+                <div class="progress-section progress-safety">
+                    <div class="progress-title">안전 관리</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressSafety" style="width: 0%;">0%</div>
+                    </div>
+                    <div class="progress-percent" id="percentSafety">0/0</div>
+                </div>
+
+                <div class="progress-section progress-psm">
+                    <div class="progress-title">PSM 관리</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressPsm" style="width: 0%;">0%</div>
+                    </div>
+                    <div class="progress-percent" id="percentPsm">0/0</div>
+                </div>
+
+                <div class="progress-section progress-total">
+                    <div class="progress-title">🎯 전체 진행률</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressTotal" style="width: 0%;">0%</div>
+                    </div>
+                    <div class="progress-percent" id="percentTotal">0/0</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 할일/문서/설정 (3열) -->
+        <div class="dashboard-grid three-columns">
             <!-- 할일 관리 -->
             <div class="card">
                 <div class="card-title">✅ 할일 관리</div>
@@ -569,10 +581,7 @@
 
                 <button class="btn btn-secondary" onclick="addTaskModal()" style="width: 100%; margin-top: 1rem;">➕ 새 항목 추가</button>
             </div>
-        </div>
 
-        <!-- 추가 기능 -->
-        <div class="dashboard-grid" style="margin-top: 2rem;">
             <!-- 문서 라이브러리 -->
             <div class="card">
                 <div class="card-title">📚 문서 라이브러리</div>
