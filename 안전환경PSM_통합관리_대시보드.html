@@ -440,9 +440,144 @@
             font-size: 14px;
         }
 
+        /* #9: 할일 리스트 스크롤 개선 */
+        .checkbox-list {
+            max-height: 500px;
+            overflow-y: auto;
+            padding-right: 8px;
+        }
+
+        .checkbox-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .checkbox-list::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+
+        .checkbox-list::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 3px;
+        }
+
+        .checkbox-list::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        /* #3: 모바일 반응형 레이아웃 개선 */
         @media (max-width: 1024px) {
             .dashboard-grid {
                 grid-template-columns: 1fr;
+            }
+
+            .dashboard-grid.three-columns {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .mini-stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 20px;
+            }
+
+            .dashboard-grid.three-columns {
+                grid-template-columns: 1fr;
+            }
+
+            .mini-stats {
+                grid-template-columns: 1fr;
+            }
+
+            .calendar {
+                font-size: 11px;
+            }
+
+            .calendar td {
+                padding: 4px;
+                min-height: 50px;
+            }
+
+            .calendar-event {
+                font-size: 10px;
+            }
+
+            .month-nav {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .documents-grid {
+                grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            }
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 10px;
+            }
+
+            .container {
+                max-width: 100%;
+            }
+
+            .header {
+                padding: 1rem;
+                margin-bottom: 1rem;
+            }
+
+            .header h1 {
+                font-size: 16px;
+            }
+
+            .header p {
+                font-size: 12px;
+            }
+
+            .card {
+                padding: 1rem;
+            }
+
+            .card-title {
+                font-size: 16px;
+            }
+
+            .tabs {
+                gap: 5px;
+                margin-bottom: 1rem;
+            }
+
+            .tab {
+                padding: 8px 12px;
+                font-size: 12px;
+            }
+
+            .btn {
+                padding: 10px 12px;
+                font-size: 12px;
+            }
+
+            .checkbox-item {
+                padding: 8px;
+                font-size: 13px;
+            }
+
+            .form-group label {
+                font-size: 12px;
+            }
+
+            .form-group input,
+            .form-group select {
+                font-size: 14px;
+                padding: 8px;
+            }
+
+            .checkbox-list {
+                max-height: 300px;
             }
         }
 
@@ -478,12 +613,15 @@
     </style>
 </head>
 <body>
-    <div class="container">
+    <div class="container" role="main" aria-label="안전/환경/PSM 통합 관리 대시보드">
         <!-- 헤더 -->
-        <div class="header">
+        <header class="header">
             <h1>⚙️ 안전/환경/PSM 통합 관리 대시보드</h1>
             <p>순천 율촌산단 철강선 제조업 | 총무관리팀</p>
-        </div>
+        </header>
+
+        <!-- #7: 제출 기한 경고 영역 -->
+        <div id="deadlineWarnings" style="margin-bottom: 2rem;"></div>
 
         <!-- 미니 통계 -->
         <div class="mini-stats">
@@ -656,6 +794,7 @@
             renderTasks();
             renderDocuments();
             updateProgress();
+            checkDeadlines(); // #7: 제출 기한 경고
         }
 
         // 데이터 로드
@@ -672,6 +811,7 @@
             updateProgress();
             renderTasks();
             renderCalendar();
+            checkDeadlines(); // #7: 제출 기한 경고 업데이트
         }
 
         // 캘린더 셀 높이 동적 조정
@@ -747,12 +887,16 @@
                 const filtered = cat === 'all' ? appData.tasks : appData.tasks.filter(t => t.category === cat);
 
                 listEl.innerHTML = filtered.map(task => `
-                    <div class="checkbox-item">
-                        <input type="checkbox" ${task.completed ? 'checked' : ''} onchange="toggleTask(${task.id})">
-                        <label>${task.name}</label>
+                    <div class="checkbox-item" style="display: flex; justify-content: space-between; align-items: center;">
+                        <div style="display: flex; align-items: center; gap: 10px; flex: 1;">
+                            <input type="checkbox" ${task.completed ? 'checked' : ''} onchange="toggleTask(${task.id})">
+                            <label>${task.name}</label>
+                        </div>
                         <span class="status-badge ${task.completed ? 'status-completed' : 'status-pending'}">
                             ${task.completed ? '완료' : '진행중'}
                         </span>
+                        <button onclick="editTask(${task.id})" style="padding: 4px 8px; font-size: 12px; margin: 0 4px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer;">수정</button>
+                        <button onclick="deleteTask(${task.id})" style="padding: 4px 8px; font-size: 12px; background: #ef4444; color: white; border: none; border-radius: 4px; cursor: pointer;">삭제</button>
                     </div>
                 `).join('');
             });
@@ -818,6 +962,141 @@
             }
         }
 
+        // 태스크 삭제 (#2: 항목 삭제 기능)
+        function deleteTask(id) {
+            if (confirm('정말 삭제하시겠습니까?')) {
+                appData.tasks = appData.tasks.filter(t => t.id !== id);
+                saveData();
+            }
+        }
+
+        // 태스크 수정 (#2, #6: 항목 수정 기능)
+        function editTask(id) {
+            const task = appData.tasks.find(t => t.id === id);
+            if (!task) return;
+
+            modalType = 'editTask';
+            document.getElementById('modalTitle').textContent = '항목 수정';
+            document.getElementById('modalContent').innerHTML = `
+                <div class="form-group">
+                    <label>항목명</label>
+                    <input type="text" id="taskName" value="${task.name}" placeholder="항목명 입력">
+                </div>
+                <div class="form-group">
+                    <label>분류</label>
+                    <select id="taskCategory">
+                        <option value="env" ${task.category === 'env' ? 'selected' : ''}>환경</option>
+                        <option value="safety" ${task.category === 'safety' ? 'selected' : ''}>안전</option>
+                        <option value="psm" ${task.category === 'psm' ? 'selected' : ''}>PSM</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>날짜</label>
+                    <input type="date" id="taskDate" value="${task.date || ''}" required>
+                </div>
+            `;
+            document.getElementById('modal').style.display = 'block';
+            window.currentEditTaskId = id;
+        }
+
+        // 태스크 저장 (추가/수정)
+        function saveTask() {
+            const name = document.getElementById('taskName').value.trim();
+            const category = document.getElementById('taskCategory').value;
+            const date = document.getElementById('taskDate').value;
+
+            // #8: 폼 유효성 검증
+            if (!validateForm(name, date)) {
+                return;
+            }
+
+            // #5: 중복 항목 추가 방지
+            if (modalType === 'addTask' && checkDuplicate(name, date)) {
+                alert('같은 날짜에 같은 항목이 이미 존재합니다.');
+                return;
+            }
+
+            if (modalType === 'addTask') {
+                appData.tasks.push({
+                    id: appData.tasks.length > 0 ? Math.max(...appData.tasks.map(t => t.id)) + 1 : 1,
+                    name,
+                    category,
+                    date,
+                    completed: false
+                });
+            } else if (modalType === 'editTask') {
+                const task = appData.tasks.find(t => t.id === window.currentEditTaskId);
+                if (task) {
+                    task.name = name;
+                    task.category = category;
+                    task.date = date;
+                }
+            }
+
+            saveData();
+            closeModal();
+        }
+
+        // #8: 폼 유효성 검증
+        function validateForm(name, date) {
+            if (!name || name.length === 0) {
+                alert('항목명을 입력해주세요.');
+                return false;
+            }
+            if (name.length > 100) {
+                alert('항목명은 100자 이내로 입력해주세요.');
+                return false;
+            }
+            if (!date) {
+                alert('날짜를 선택해주세요.');
+                return false;
+            }
+            return true;
+        }
+
+        // #5: 중복 항목 검사
+        function checkDuplicate(name, date) {
+            return appData.tasks.some(t => t.name === name && t.date === date);
+        }
+
+        // #7: 제출 기한 경고 함수
+        function checkDeadlines() {
+            const today = new Date();
+            const warnings = [];
+
+            appData.tasks.forEach(task => {
+                if (!task.completed && task.date) {
+                    const taskDate = new Date(task.date);
+                    const daysRemaining = Math.ceil((taskDate - today) / (1000 * 60 * 60 * 24));
+
+                    if (daysRemaining === 7) {
+                        warnings.push(`⚠️ D-7: ${task.name} (${task.date})`);
+                    } else if (daysRemaining === 3) {
+                        warnings.push(`⚠️ D-3: ${task.name} (${task.date})`);
+                    } else if (daysRemaining === 0) {
+                        warnings.push(`🚨 오늘: ${task.name} (${task.date})`);
+                    } else if (daysRemaining < 0) {
+                        warnings.push(`❌ 기한초과: ${task.name} (${task.date})`);
+                    }
+                }
+            });
+
+            if (warnings.length > 0) {
+                const warningEl = document.getElementById('deadlineWarnings');
+                if (warningEl) {
+                    warningEl.innerHTML = warnings.map(w => `<div style="padding: 8px; background: #fef3c7; border-left: 3px solid #f59e0b; margin: 8px 0; border-radius: 3px;">${w}</div>`).join('');
+                }
+            }
+        }
+
+        // #1: 문서 클릭 기능 구현
+        function downloadDocument(id) {
+            const doc = appData.documents.find(d => d.id === id);
+            if (doc) {
+                alert(`${doc.name} 문서\n\n(실제 구현 시 다운로드 또는 링크 열기 기능이 추가됩니다)`);
+            }
+        }
+
         // 태스크 추가
         function addTaskModal() {
             modalType = 'addTask';
@@ -825,7 +1104,7 @@
             document.getElementById('modalContent').innerHTML = `
                 <div class="form-group">
                     <label>항목명</label>
-                    <input type="text" id="taskName" placeholder="예: 대기배출 자료 제출">
+                    <input type="text" id="taskName" placeholder="예: 대기배출 자료 제출" maxlength="100">
                 </div>
                 <div class="form-group">
                     <label>분류</label>
@@ -837,7 +1116,7 @@
                 </div>
                 <div class="form-group">
                     <label>날짜</label>
-                    <input type="date" id="taskDate">
+                    <input type="date" id="taskDate" required>
                 </div>
             `;
             document.getElementById('modal').style.display = 'flex';
@@ -868,22 +1147,8 @@
 
         // 모달 저장
         function saveModal() {
-            if (modalType === 'addTask') {
-                const name = document.getElementById('taskName').value;
-                const category = document.getElementById('taskCategory').value;
-                const date = document.getElementById('taskDate').value;
-
-                if (name.trim()) {
-                    appData.tasks.push({
-                        id: Date.now(),
-                        name: name,
-                        category: category,
-                        date: date,
-                        completed: false
-                    });
-                    saveData();
-                    closeModal();
-                }
+            if (modalType === 'addTask' || modalType === 'editTask') {
+                saveTask();
             } else if (modalType === 'addDocument') {
                 const name = document.getElementById('docName').value;
                 const icon = document.getElementById('docIcon').value;
