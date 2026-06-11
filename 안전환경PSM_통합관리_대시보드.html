@@ -76,23 +76,23 @@
         }
 
         .progress-section {
-            margin-bottom: 2rem;
+            margin-bottom: 1rem;
         }
 
         .progress-title {
-            font-size: 14px;
+            font-size: 12px;
             font-weight: 600;
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.3rem;
             color: #333;
         }
 
         .progress-bar {
             width: 100%;
-            height: 24px;
+            height: 18px;
             background: #f0f0f0;
-            border-radius: 12px;
+            border-radius: 9px;
             overflow: hidden;
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.3rem;
             position: relative;
         }
 
@@ -246,17 +246,19 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 1rem;
+            gap: 1rem;
         }
 
         .month-nav button {
             background: #f0f0f0;
             border: none;
-            padding: 8px 16px;
+            padding: 8px 12px;
             border-radius: 6px;
             cursor: pointer;
             font-weight: 600;
             color: #667eea;
             transition: background 0.2s;
+            flex: 0 0 auto;
         }
 
         .month-nav button:hover {
@@ -267,6 +269,8 @@
             font-size: 18px;
             font-weight: 600;
             color: #333;
+            text-align: center;
+            flex: 1;
         }
 
         .tabs {
@@ -783,35 +787,41 @@
                 <button class="btn btn-secondary" onclick="addDocumentModal()" style="width: 100%; margin-top: 1rem;">➕ 문서 추가</button>
             </div>
 
-            <!-- 설정 -->
+            <!-- Excel 관리 -->
             <div class="card">
-                <div class="card-title">⚙️ 제출 기한 설정</div>
+                <div class="card-title">📊 Excel 일정 관리</div>
+
+                <!-- Excel 다운로드 -->
                 <div class="settings-section">
-                    <div class="settings-title">환경 관리</div>
-                    <div class="deadline-item">
-                        <span class="deadline-label">환경 제출 기한:</span>
-                        <input type="text" class="deadline-input" id="deadlineEnv" placeholder="예: 매월 말일" value="매월 말일">
-                    </div>
+                    <div class="settings-title">📥 Excel 양식 다운로드</div>
+                    <p style="font-size: 13px; color: #666; margin-bottom: 1rem;">
+                        환경/안전/PSM 일정을 작성할 수 있는 Excel 양식을 다운로드합니다.
+                    </p>
+                    <button class="btn btn-primary" onclick="downloadExcelTemplate()" style="width: 100%;">
+                        📥 Excel 양식 다운로드
+                    </button>
                 </div>
 
+                <!-- Excel 업로드 -->
                 <div class="settings-section">
-                    <div class="settings-title">안전 관리</div>
-                    <div class="deadline-item">
-                        <span class="deadline-label">안전 제출 기한:</span>
-                        <input type="text" class="deadline-input" id="deadlineSafety" placeholder="예: 매월 15일" value="매월 15일">
+                    <div class="settings-title">📤 Excel 파일 업로드</div>
+                    <div id="uploadDropZone" style="border: 2px dashed #667eea; border-radius: 8px; padding: 2rem; text-align: center; cursor: pointer; background: #f8f7ff; transition: all 0.3s; margin-bottom: 1rem;" onmouseover="this.style.background='#f0ebff'" onmouseout="this.style.background='#f8f7ff'" ondrop="handleDropZone(event)" ondragover="event.preventDefault()">
+                        <div style="font-size: 24px; margin-bottom: 0.5rem;">📂</div>
+                        <div style="font-size: 14px; font-weight: 600; color: #667eea; margin-bottom: 0.3rem;">
+                            Excel 파일을 드래그해서 놓으세요
+                        </div>
+                        <div style="font-size: 12px; color: #999;">
+                            또는 아래 버튼으로 파일을 선택하세요
+                        </div>
                     </div>
+                    <input type="file" id="excelFileInput" accept=".xlsx,.xls,.csv" style="display: none;" onchange="handleExcelUpload(event)">
+                    <button class="btn btn-secondary" onclick="document.getElementById('excelFileInput').click();" style="width: 100%;">
+                        파일 선택
+                    </button>
+                    <div id="uploadStatus" style="margin-top: 1rem; font-size: 13px;"></div>
                 </div>
 
-                <div class="settings-section">
-                    <div class="settings-title">PSM 관리</div>
-                    <div class="deadline-item">
-                        <span class="deadline-label">PSM 제출 기한:</span>
-                        <input type="text" class="deadline-input" id="deadlinePsm" placeholder="예: 월중순" value="월중순">
-                    </div>
-                </div>
-
-                <button class="btn btn-primary" onclick="saveSettings()" style="width: 100%; margin-top: 1rem;">💾 설정 저장</button>
-                <button class="btn btn-secondary" onclick="exportData()" style="width: 100%; margin-top: 0.5rem;">📥 데이터 내보내기</button>
+                <button class="btn btn-secondary" onclick="exportData()" style="width: 100%; margin-top: 1rem;">📥 데이터 내보내기 (CSV)</button>
             </div>
         </div>
     </div>
@@ -1322,13 +1332,121 @@
             renderCalendar();
         }
 
-        // 설정 저장
-        function saveSettings() {
-            appData.settings.env = document.getElementById('deadlineEnv').value;
-            appData.settings.safety = document.getElementById('deadlineSafety').value;
-            appData.settings.psm = document.getElementById('deadlinePsm').value;
-            saveData();
-            alert('설정이 저장되었습니다.');
+        // #15: Excel 양식 다운로드
+        function downloadExcelTemplate() {
+            const data = [
+                ['분류', '항목명', '날짜', '내용/설명', '담당자'],
+                ['환경', '대기배출 자료 제출', '2026-07-31', '월간 대기배출량 보고', '홍길동'],
+                ['환경', '수질 점검 보고', '2026-07-15', '월간 수질 검사', '김영희'],
+                ['환경', '폐기물 처리 현황', '2026-07-25', '폐기물 분류 및 처리', '이순신'],
+                ['안전', '산업안전 교육', '2026-07-20', '분기별 안전교육 실시', '박민준'],
+                ['안전', '안전점검 보고', '2026-07-10', '월간 안전 점검', '최지은'],
+                ['안전', '근로자 건강검진', '2026-07-30', '정기 건강검진', '호호호'],
+                ['PSM', '공정안전 절차서 검토', '2026-07-25', 'PSM 절차서 정기 점검', '김수현'],
+                ['PSM', '위험물질 관리', '2026-07-15', '유해화학물질 재고 점검', '이영준'],
+                ['PSM', '긴급대응 훈련', '2026-07-28', '분기별 긴급상황 훈련', '강민철']
+            ];
+
+            let csv = data.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `환경안전PSM_일정_양식_${new Date().toISOString().split('T')[0]}.csv`;
+            link.click();
+        }
+
+        // #15: Excel 파일 업로드 처리
+        function handleExcelUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const csv = e.target.result;
+                    const lines = csv.split('\n').filter(line => line.trim());
+
+                    if (lines.length < 2) {
+                        alert('파일에 데이터가 없습니다.');
+                        return;
+                    }
+
+                    // 헤더 확인
+                    const header = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
+                    if (header[0] !== '분류' || header[1] !== '항목명' || header[2] !== '날짜') {
+                        alert('파일 형식이 올바르지 않습니다. 다운로드한 양식을 사용해주세요.');
+                        return;
+                    }
+
+                    // 데이터 파싱
+                    let addedCount = 0;
+                    let duplicateCount = 0;
+
+                    for (let i = 1; i < lines.length; i++) {
+                        const cells = lines[i].split(',').map(cell => cell.replace(/"/g, '').trim());
+                        if (cells.length < 3 || !cells[0] || !cells[1] || !cells[2]) continue;
+
+                        const category = cells[0];
+                        const name = cells[1];
+                        const date = cells[2];
+                        const description = cells[3] || '';
+
+                        // 카테고리 검증
+                        if (!['환경', '안전', 'PSM'].includes(category)) {
+                            alert(`${i+1}번째 행의 분류가 올바르지 않습니다. (환경/안전/PSM만 가능)`);
+                            return;
+                        }
+
+                        // 날짜 형식 검증
+                        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+                            alert(`${i+1}번째 행의 날짜 형식이 올바르지 않습니다. (YYYY-MM-DD)`);
+                            return;
+                        }
+
+                        // 중복 확인
+                        if (appData.tasks.some(t => t.name === name && t.date === date)) {
+                            duplicateCount++;
+                            continue;
+                        }
+
+                        // 항목 추가
+                        appData.tasks.push({
+                            id: appData.tasks.length > 0 ? Math.max(...appData.tasks.map(t => t.id)) + 1 : 1,
+                            name: name,
+                            category: category === '환경' ? 'env' : category === '안전' ? 'safety' : 'psm',
+                            date: date,
+                            completed: false
+                        });
+
+                        addedCount++;
+                    }
+
+                    saveData();
+
+                    let message = `${addedCount}개 항목이 추가되었습니다.`;
+                    if (duplicateCount > 0) message += `\n${duplicateCount}개 중복 항목은 제외되었습니다.`;
+
+                    alert(message);
+                    document.getElementById('uploadStatus').innerHTML = `<span style="color: #10b981;">✅ ${addedCount}개 항목 추가 완료</span>`;
+                    document.getElementById('excelFileInput').value = '';
+
+                } catch (error) {
+                    alert('파일을 처리하는 중 오류가 발생했습니다: ' + error.message);
+                }
+            };
+
+            reader.readAsText(file);
+        }
+
+        // #15: 드래그 앤 드롭 처리
+        function handleDropZone(event) {
+            event.preventDefault();
+            const files = event.dataTransfer.files;
+            if (files.length > 0) {
+                document.getElementById('excelFileInput').files = files;
+                handleExcelUpload({ target: { files: files } });
+            }
         }
 
         // 데이터 내보내기
