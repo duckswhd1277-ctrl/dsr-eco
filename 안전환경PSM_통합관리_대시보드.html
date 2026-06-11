@@ -1037,20 +1037,64 @@
             closeModal();
         }
 
-        // #8: 폼 유효성 검증
+        // #8: 폼 유효성 검증 (강화됨)
         function validateForm(name, date) {
-            if (!name || name.length === 0) {
+            // 1️⃣ 빈 값 확인
+            if (!name || name.trim().length === 0) {
                 alert('항목명을 입력해주세요.');
                 return false;
             }
+
+            // 2️⃣ 공백만 입력된 경우 거부
+            if (name.trim() !== name) {
+                alert('항목명 앞뒤에 공백을 제거해주세요.');
+                return false;
+            }
+
+            // 3️⃣ 최소 길이 (2자 이상)
+            if (name.trim().length < 2) {
+                alert('항목명은 최소 2자 이상 입력해주세요.');
+                return false;
+            }
+
+            // 4️⃣ 최대 길이 (100자 이하)
             if (name.length > 100) {
                 alert('항목명은 100자 이내로 입력해주세요.');
                 return false;
             }
+
+            // 5️⃣ 특수문자 제한 (일반적인 특수문자만 허용)
+            const validNameRegex = /^[가-힣a-zA-Z0-9\s\-_()\[\]\.,:;!?]*$/;
+            if (!validNameRegex.test(name)) {
+                alert('항목명에 허용되지 않는 특수문자가 있습니다.\n(허용: 한글, 영문, 숫자, 공백, 하이픈, 괄호, 점, 쉼표, 콜론, 세미콜론, 느낌표, 물음표)');
+                return false;
+            }
+
+            // 6️⃣ 날짜 확인
             if (!date) {
                 alert('날짜를 선택해주세요.');
                 return false;
             }
+
+            // 7️⃣ 날짜 형식 확인
+            const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+            if (!dateRegex.test(date)) {
+                alert('올바른 날짜 형식이 아닙니다. (YYYY-MM-DD)');
+                return false;
+            }
+
+            // 8️⃣ 날짜가 과거인 경우 경고 (단, 오늘 포함)
+            const selectedDate = new Date(date);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            if (selectedDate < today) {
+                const confirm_past = confirm(`선택한 날짜(${date})는 과거입니다.\n과거 날짜로 추가하시겠습니까?`);
+                if (!confirm_past) {
+                    return false;
+                }
+            }
+
             return true;
         }
 
