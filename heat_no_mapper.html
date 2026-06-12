@@ -438,32 +438,37 @@
             const col2_heat = headers2.indexOf('HEAT NO'); // 8
 
             const matches = [];
+            const matchedRows = new Set();
 
+            // 먼저 OT 데이터에서 제조번호별 HEAT NO 수집
+            const heatMap = {};
             for (let i = 1; i < data2.length; i++) {
-                const row2 = data2[i];
-                const manuf = row2[col2_manuf];
-                const heatNo = row2[col2_heat];
+                const manuf = data2[i][col2_manuf];
+                const heatNo = data2[i][col2_heat];
+                if (manuf) {
+                    heatMap[manuf] = heatNo;
+                }
+            }
 
-                if (!manuf) continue;
-
-                for (let j = 1; j < data1.length; j++) {
-                    const row1 = data1[j];
-                    if (row1[col1_manuf] === manuf) {
-                        matches.push({
-                            manufNo: manuf,
-                            company: row1[4],
-                            heatNo: heatNo,
-                            rowIndex: j,
-                            matched: true
-                        });
-                        break;
-                    }
+            // 정리파일의 모든 행에서 제조번호로 HEAT NO 찾기 (같은 제조번호 모두 처리)
+            for (let j = 1; j < data1.length; j++) {
+                const manuf = data1[j][col1_manuf];
+                if (manuf && heatMap[manuf]) {
+                    matches.push({
+                        manufNo: manuf,
+                        company: data1[j][4],
+                        heatNo: heatMap[manuf],
+                        rowIndex: j,
+                        matched: true
+                    });
+                    matchedRows.add(j);
                 }
             }
 
             return {
                 headers1, data1,
                 matches,
+                matchedRows,
                 colIndices: {
                     heat: col1_heat
                 }

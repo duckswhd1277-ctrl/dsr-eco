@@ -57,11 +57,13 @@ try {
 
     $rows1 = $ws1.UsedRange.Rows.Count
     $matchCount = 0
+    $totalRows = 0
 
     for ($row = 2; $row -le $rows1; $row++) {
         $manuf = $ws1.Cells.Item($row, $origManufCol).Text
 
         if ($manuf) {
+            $totalRows++
             if ($otData.ContainsKey($manuf)) {
                 $ws1.Cells.Item($row, $origHeatCol).Value = $otData[$manuf]
                 $matchCount++
@@ -69,11 +71,11 @@ try {
         }
 
         if ($row % 1000 -eq 0) {
-            Write-Host "  진행률: $row / $rows1" -ForegroundColor Gray
+            Write-Host "  진행률: $row / $rows1 (매칭: $matchCount)" -ForegroundColor Gray
         }
     }
 
-    Write-Host "  ✅ 수정 완료: 매칭 $matchCount건" -ForegroundColor Green
+    Write-Host "  ✅ 수정 완료: 총 $totalRows행 중 매칭 $matchCount건" -ForegroundColor Green
 
     # 4. 저장
     Write-Host "`n[4/4] 파일 저장 중..." -ForegroundColor Yellow
