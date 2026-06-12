@@ -297,6 +297,11 @@
             <div class="section">
                 <h2>2️⃣ 매칭 결과 미리보기</h2>
 
+                <div id="debugInfo" style="display:none; background: #f0f0f0; padding: 10px; border-radius: 6px; margin-bottom: 10px; font-size: 12px; max-height: 150px; overflow-y: auto;">
+                    <strong>🔍 디버그 정보:</strong>
+                    <div id="debugContent"></div>
+                </div>
+
                 <div id="previewContainer" style="display:none;">
                     <div class="preview-table">
                         <table id="previewTable">
@@ -312,6 +317,7 @@
                             </tbody>
                         </table>
                     </div>
+                    <small style="color: #999; margin-top: 10px; display: block;">* 상위 10개만 표시됩니다 (전체: <span id="totalMatched">0</span>개)</small>
                 </div>
 
                 <div style="display: flex; gap: 10px; margin-top: 20px;">
@@ -431,11 +437,28 @@
             document.getElementById('stat3').textContent = '0';
             document.getElementById('results').style.display = 'grid';
 
-            // 미리보기 테이블
+            // 디버그 정보 표시
+            const debugContent = document.getElementById('debugContent');
+            const uniqueHeatNos = new Set(data.matches.map(m => m.heatNo));
+            const uniqueManuf = new Set(data.matches.map(m => m.manufNo));
+
+            debugContent.innerHTML = `
+                <div>📊 OT 열처리 데이터: ${data.matches.length}개</div>
+                <div>🔗 제조번호 종류: ${uniqueManuf.size}개</div>
+                <div>🌡️ HEAT NO 종류: ${uniqueHeatNos.size}개</div>
+                <div style="margin-top: 8px; color: #666;">
+                    ${Array.from(uniqueHeatNos).slice(0, 5).map(h => `<span style="display: inline-block; background: #e0e0e0; padding: 2px 6px; margin: 2px; border-radius: 3px;">${h}</span>`).join('')}
+                    ${uniqueHeatNos.size > 5 ? `<span style="display: inline-block; color: #999;">... 외 ${uniqueHeatNos.size - 5}개</span>` : ''}
+                </div>
+            `;
+            document.getElementById('debugInfo').style.display = 'block';
+
+            // 미리보기 테이블 - 다양한 HEAT NO 샘플 선택
             const tableBody = document.getElementById('tableBody');
             tableBody.innerHTML = '';
 
-            data.matches.slice(0, 10).forEach(item => {
+            const sampleItems = getDistributedSamples(data.matches, 10);
+            sampleItems.forEach(item => {
                 const row = document.createElement('tr');
                 row.className = 'match';
                 row.innerHTML = `
@@ -447,15 +470,44 @@
                 tableBody.appendChild(row);
             });
 
+            document.getElementById('totalMatched').textContent = matched;
             document.getElementById('previewContainer').style.display = 'block';
             document.getElementById('downloadBtn').style.display = 'block';
             document.getElementById('issueBtn').style.display = 'block';
             document.getElementById('docBtn').style.display = 'block';
         }
 
+        function getDistributedSamples(items, count) {
+            if (items.length <= count) return items;
+
+            // 다양한 HEAT NO를 균등하게 샘플링
+            const step = Math.floor(items.length / count);
+            const samples = [];
+            for (let i = 0; i < count && i * step < items.length; i++) {
+                samples.push(items[i * step]);
+            }
+            return samples;
+        }
+
         function downloadResult() {
             if (!analysisData) return;
 
+            // 옵션 선택
+            const option = confirm(
+                '다운로드 방식을 선택하세요.\n\n' +
+                '확인: 새로운 파일 (HEAT NO만 추가된 정리파일)\n' +
+                '취소: 매칭 결과만 (제조번호, 거래처, HEAT NO)'
+            );
+
+            if (option) {
+                downloadFullFile();
+            } else {
+                downloadMatchesOnly();
+            }
+        }
+
+        function downloadFullFile() {
+            // 원본 파일 구조 유지하며 HEAT NO만 추가
             const newData = analysisData.data1.map(row => [...row]);
             const heatColIdx = analysisData.colIndices.heat;
 
@@ -465,10 +517,40 @@
 
             const ws = XLSX.utils.aoa_to_sheet(newData);
             const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "데이터");
+            XLSX.utils.book_append_sheet(wb, ws, "정리파일(수출)");
             XLSX.writeFile(wb, `정리파일(수출)_HEAT처리_${new Date().getTime()}.xlsx`);
 
-            showStatus('✅ 수정된 파일을 다운로드했습니다!', 'success');
+            showStatus('✅ 새로운 정리파일을 다운로드했습니다! (원본 파일 보존됨)', 'success');
+        }
+
+        function downloadMatchesOnly() {
+            // 매칭 결과만 정리
+            const headers = ['제조번호', '거래처', 'HEAT NO', '상태'];
+            const data = [headers];
+
+            analysisData.matches.forEach(match => {
+                data.push([
+                    match.manufNo,
+                    match.company || '',
+                    match.heatNo || '',
+                    '✅ 매칭됨'
+                ]);
+            });
+
+            const ws = XLSX.utils.aoa_to_sheet(data);
+            // 컬럼 너비 설정
+            ws['!cols'] = [
+                { wch: 15 },  // 제조번호
+                { wch: 20 },  // 거래처
+                { wch: 15 },  // HEAT NO
+                { wch: 15 }   // 상태
+            ];
+
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "매칭결과");
+            XLSX.writeFile(wb, `HEAT_NO_매칭결과_${new Date().getTime()}.xlsx`);
+
+            showStatus('✅ 매칭 결과를 다운로드했습니다!', 'success');
         }
 
         function showStatus(message, type = 'info') {
