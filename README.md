@@ -2,6 +2,47 @@
 
 순천 율촌산단 철강선 제조업 **총무관리팀**을 위한 통합 관리 시스템입니다.
 
+## 🤖 Claude Agent Teams + Harness Architecture ✨ [NEW]
+
+이 프로젝트는 **Claude Harness Architecture**를 통해 체계적인 자동화를 수행합니다.
+
+### 3-Tier 하네스 구조
+
+```
+┌─ TIER 1: Coordinator (Manual Agentic Loop) ────────┐
+│  상태 머신: ANALYZE → EXECUTE → DOCUMENT → VERIFY   │
+│  에러 처리 & 롤백 메커니즘                          │
+└────────────────────────────────────────────────────┘
+         ↓
+┌─ TIER 2: Specialized Agents (Tool Runners) ───────┐
+│  Issue Writer | Issue Runner | Doc Optimizer       │
+│  각 에이전트가 자신의 도구를 활용                   │
+└────────────────────────────────────────────────────┘
+         ↓
+┌─ TIER 3: Tools (Server-side & Client-side) ──────┐
+│  GitHub CLI | Code Execution | Memory Tool         │
+│  WebFetch | Bash | heat_no_mapper.html             │
+└────────────────────────────────────────────────────┘
+```
+
+### 아키텍처 문서
+
+- 📐 [`하네스 아키텍처 설계`](./.claude/HARNESS_ARCHITECTURE.md) - 전체 구조 및 개념
+- 🔄 [`Coordinator Manual Loop`](./.claude/COORDINATOR_MANUAL_LOOP.md) - 상태 머신 상세 구현
+- 🛠️ [`Tool Runner 패턴`](./.claude/TOOL_RUNNER_PATTERNS.md) - 3개 에이전트 구현
+- 💾 [`Memory Schema`](./.claude/MEMORY_SCHEMA.md) - 상태 영속성 설계
+
+### 핵심 팀 역할
+
+- **Coordinator** (수동 루프 제어): 4단계 사이클 조율, 상태 머신 관리
+- **Issue Writer** (분석 에이전트): 코드 분석 → 이슈 도출
+- **Issue Runner** (실행 에이전트): 이슈 구현 → 테스트 → 커밋
+- **Doc Optimizer** (문서 에이전트): 문서 검토 → 최신화 → 커밋
+
+👉 [`Agent Teams 가이드`](./.claude/AGENTS.md) | [`빠른 시작`](./.claude/agents/QUICKSTART.md)
+
+---
+
 ## 📋 개요
 
 - **대상**: 총무관리팀 (설비팀 포함)
@@ -45,6 +86,50 @@
 - **자동 저장**: 모든 데이터는 브라우저 LocalStorage에 저장
 - **CSV 내보내기**: 엑셀에서 분석 가능한 형식
 - **크로스 브라우저**: Chrome, Edge, Firefox 모두 지원
+
+---
+
+## 🔧 HEAT NO 자동 매칭 도구 (heat_no_mapper.html)
+
+별도의 도구로 철강 제조 현장에서 **제조번호 기준 HEAT NO 자동 매칭**을 수행합니다.
+
+### 주요 기능
+
+✨ **자동 매칭**
+- 제조번호를 공통 키로 HEAT NO 자동 연결
+- OT 열처리 데이터 → 정리파일에 자동 입력
+
+📊 **미리보기 및 정렬**
+- 매칭 결과 테이블 미리보기
+- **테이블 헤더 클릭으로 정렬** (제조번호, 거래처, HEAT NO)
+- 오름차순/내림차순 토글 (↑/↓ 표시)
+
+📥 **결과 다운로드**
+- 전체 파일 다운로드: 원본 파일에 HEAT NO 자동 입력
+- 매칭 결과만 다운로드: 제조번호/거래처/HEAT NO/상태
+
+🔗 **GitHub Issues 연동**
+- 매칭 결과를 자동으로 GitHub Issues로 생성
+- 또는 로컬 파일로 저장
+
+### 사용 방법
+
+1. **파일 선택**
+   - 📊 정리파일(수출).xls: 제품 정보 (제조번호, HEAT NO, 강종, 거래처)
+   - 🔥 OT 열처리.xls: 열처리 데이터 (제조번호, HEAT NO)
+   - 🌾 원재료 조회 파일 (선택): SF가 아닌 HEAT NO 보정용
+
+2. **분석**
+   - "📊 파일 분석하기" 버튼 클릭
+   - 자동으로 HEAT NO 매칭 실행
+
+3. **결과 확인**
+   - 미리보기 테이블에서 매칭 결과 확인
+   - 테이블 헤더를 클릭하여 정렬 (예: 제조번호 기준 정렬)
+
+4. **다운로드**
+   - "💾 결과 다운로드" 클릭
+   - 전체 파일 또는 매칭 결과만 선택
 
 ---
 
