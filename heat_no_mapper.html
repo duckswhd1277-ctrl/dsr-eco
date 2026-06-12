@@ -323,10 +323,16 @@
                         <table id="previewTable">
                             <thead>
                                 <tr>
-                                    <th>제조번호</th>
-                                    <th>거래처</th>
-                                    <th>HEAT NO</th>
-                                    <th>상태</th>
+                                    <th onclick="sortTable('manufNo')" style="cursor: pointer; user-select: none;">
+                                        제조번호 <span id="sortIcon-manufNo"></span>
+                                    </th>
+                                    <th onclick="sortTable('company')" style="cursor: pointer; user-select: none;">
+                                        거래처 <span id="sortIcon-company"></span>
+                                    </th>
+                                    <th onclick="sortTable('heatNo')" style="cursor: pointer; user-select: none;">
+                                        HEAT NO <span id="sortIcon-heatNo"></span>
+                                    </th>
+                                    <th style="cursor: default;">상태</th>
                                 </tr>
                             </thead>
                             <tbody id="tableBody">
@@ -528,7 +534,44 @@
             return null;
         }
 
+        // 정렬 상태 추적
+        let sortState = {
+            column: null,
+            direction: 'asc'
+        };
+        let currentAnalysisData = null;
+
+        function sortTable(column) {
+            // 같은 컬럼 클릭시 방향 토글
+            if (sortState.column === column) {
+                sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortState.column = column;
+                sortState.direction = 'asc';
+            }
+
+            // 정렬 아이콘 업데이트
+            updateSortIcons();
+
+            // 테이블 다시 렌더링
+            updatePreviewTable();
+        }
+
+        function updateSortIcons() {
+            // 모든 정렬 아이콘 초기화
+            ['manufNo', 'company', 'heatNo'].forEach(col => {
+                document.getElementById(`sortIcon-${col}`).textContent = '';
+            });
+
+            // 현재 정렬 컬럼 아이콘 표시
+            if (sortState.column) {
+                const icon = sortState.direction === 'asc' ? '↑' : '↓';
+                document.getElementById(`sortIcon-${sortState.column}`).textContent = icon;
+            }
+        }
+
         function displayResults(data) {
+            currentAnalysisData = data;
             const matched = data.matches.length;
 
             document.getElementById('stat1').textContent = data.matches.length;
@@ -562,9 +605,31 @@
 
                 let sampleItems;
                 if (rowCount === 'all') {
-                    sampleItems = data.matches;
+                    sampleItems = [...data.matches];
                 } else {
                     sampleItems = getDistributedSamples(data.matches, parseInt(rowCount));
+                }
+
+                // 정렬 적용
+                if (sortState.column) {
+                    sampleItems.sort((a, b) => {
+                        let aVal = a[sortState.column] || '';
+                        let bVal = b[sortState.column] || '';
+
+                        // 숫자 비교
+                        if (!isNaN(aVal) && !isNaN(bVal)) {
+                            aVal = parseFloat(aVal);
+                            bVal = parseFloat(bVal);
+                        } else {
+                            // 문자열 비교 (한글 포함)
+                            aVal = String(aVal).toLowerCase();
+                            bVal = String(bVal).toLowerCase();
+                        }
+
+                        if (aVal < bVal) return sortState.direction === 'asc' ? -1 : 1;
+                        if (aVal > bVal) return sortState.direction === 'asc' ? 1 : -1;
+                        return 0;
+                    });
                 }
 
                 sampleItems.forEach(item => {
