@@ -809,12 +809,17 @@
                         );
 
                         if (matchingData) {
+                            // HEAT NO 포맷팅
+                            const formattedHeatNo = matchingData.heatNo
+                                ? `HEAT NO : ${matchingData.heatNo}`
+                                : '';
+
                             if (heatColIdx === -1) {
                                 // 새로운 컬럼으로 추가
-                                newRow.push(matchingData.heatNo || '');
+                                newRow.push(formattedHeatNo);
                             } else {
                                 // 기존 컬럼 업데이트
-                                newRow[heatColIdx] = matchingData.heatNo || '';
+                                newRow[heatColIdx] = formattedHeatNo;
                             }
                         }
 
