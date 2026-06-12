@@ -314,16 +314,17 @@
                     </div>
                 </div>
 
-                <div id="issuesContainer" style="display:none;">
-                    <div class="issues">
-                        <h3>⚠️ 발견된 이슈</h3>
-                        <ul class="issue-list" id="issueList"></ul>
-                    </div>
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button onclick="downloadResult()" id="downloadBtn" style="display:none; flex: 1;">
+                        💾 결과 다운로드
+                    </button>
+                    <button onclick="createGitHubIssue()" id="issueBtn" style="display:none; flex: 1;">
+                        📝 GitHub Issue 생성
+                    </button>
+                    <button onclick="optimizeDoc()" id="docBtn" style="display:none; flex: 1;">
+                        📄 문서 최적화
+                    </button>
                 </div>
-
-                <button onclick="downloadResult()" id="downloadBtn" style="display:none; margin-top: 20px;">
-                    💾 결과 다운로드 (수정된 Excel)
-                </button>
             </div>
         </div>
     </div>
@@ -439,7 +440,6 @@
                 row.className = 'match';
                 row.innerHTML = `
                     <td>${item.manufNo}</td>
-                    <td>-</td>
                     <td>${item.company || '-'}</td>
                     <td><strong>${item.heatNo || '-'}</strong></td>
                     <td>✅ 매칭됨</td>
@@ -448,6 +448,9 @@
             });
 
             document.getElementById('previewContainer').style.display = 'block';
+            document.getElementById('downloadBtn').style.display = 'block';
+            document.getElementById('issueBtn').style.display = 'block';
+            document.getElementById('docBtn').style.display = 'block';
         }
 
         function downloadResult() {
@@ -473,6 +476,134 @@
             status.textContent = message;
             status.className = 'status ' + type;
             status.style.display = 'block';
+        }
+
+        async function createGitHubIssue() {
+            if (!analysisData || analysisData.matches.length === 0) {
+                alert('분석 결과가 없습니다');
+                return;
+            }
+
+            const token = prompt('GitHub Personal Access Token을 입력하세요:\n(또는 취소를 눌러서 로컬 저장)');
+
+            if (token === null) {
+                // 로컬에 Issue 정보 저장
+                saveIssueLocally();
+                return;
+            }
+
+            const matched = analysisData.matches.length;
+            const title = `[자동화] HEAT NO 매칭 완료 - ${matched}개 항목`;
+            const body = generateIssueBody(analysisData.matches);
+
+            try {
+                showStatus('GitHub Issue 생성 중...', 'loading');
+
+                const response = await fetch('https://api.github.com/repos/duckswhd1277-ctrl/dsr-eco/issues', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        title: title,
+                        body: body,
+                        labels: ['automation', 'HEAT-NO', 'completed']
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    showStatus(`✅ Issue #${data.number} 생성 완료!`, 'success');
+                    document.getElementById('downloadBtn').style.display = 'block';
+                } else {
+                    const error = await response.json();
+                    showStatus(`❌ 오류: ${error.message}`, 'error');
+                }
+            } catch (error) {
+                showStatus(`❌ 오류 발생: ${error.message}`, 'error');
+            }
+        }
+
+        function saveIssueLocally() {
+            const matched = analysisData.matches.length;
+            const body = generateIssueBody(analysisData.matches);
+
+            const issueContent = `# [자동화] HEAT NO 매칭 완료 - ${matched}개 항목\n\n${body}`;
+
+            const element = document.createElement('a');
+            element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(issueContent));
+            element.setAttribute('download', 'github_issue.txt');
+            element.style.display = 'none';
+            document.body.appendChild(element);
+            element.click();
+            document.body.removeChild(element);
+
+            showStatus('✅ Issue 정보를 파일로 다운로드했습니다', 'success');
+        }
+
+        function generateIssueBody(matches) {
+            const matched = matches.length;
+            const sampleRows = matches.slice(0, 5);
+
+            let body = `## 📊 HEAT NO 자동 매칭 완료\n\n`;
+            body += `**매칭 결과:**\n`;
+            body += `- ✅ 성공: ${matched}개 항목\n`;
+            body += `- 📁 파일: 정리파일(수출).xls\n`;
+            body += `- 🔗 매칭 기준: 제조번호\n\n`;
+
+            body += `**매칭 샘플 (상위 5개):**\n`;
+            body += `| 제조번호 | 거래처 | HEAT NO |\n`;
+            body += `|---------|--------|--------|\n`;
+
+            sampleRows.forEach(item => {
+                body += `| ${item.manufNo} | ${item.company || '-'} | ${item.heatNo} |\n`;
+            });
+
+            body += `\n**작업 정보:**\n`;
+            body += `- 도구: HEAT NO 자동 매칭 도구\n`;
+            body += `- 시간: ${new Date().toLocaleString('ko-KR')}\n`;
+            body += `- 상태: ✅ 완료\n`;
+
+            return body;
+        }
+
+        function optimizeDoc() {
+            const docContent = `# HEAT NO 자동 매칭 도구\n\n`;
+            const matched = analysisData.matches.length;
+
+            const docBody = `
+## 📋 작업 완료 요약
+
+### 분석 결과
+- **매칭된 항목**: ${matched}개
+- **매칭 방식**: 제조번호 기반
+- **원본 파일**: 정리파일(수출).xls
+- **대상 컬럼**: 비고2(HEAT)
+
+### 매칭 데이터 샘플
+| 제조번호 | 거래처 | HEAT NO |
+|---------|--------|--------|
+${analysisData.matches.slice(0, 5).map(m => `| ${m.manufNo} | ${m.company || '-'} | ${m.heatNo} |`).join('\n')}
+
+### 다음 단계
+1. 결과 다운로드로 Excel 파일 확인
+2. PowerShell 스크립트로 일괄 적용
+3. 정리파일(수출) 업데이트
+
+---
+**생성 일시**: ${new Date().toLocaleString('ko-KR')}
+`;
+
+            const element = document.createElement('a');
+            element.setAttribute('href', 'data:text/markdown;charset=utf-8,' + encodeURIComponent(docContent + docBody));
+            element.setAttribute('download', 'heat_no_mapper_report.md');
+            element.style.display = 'none';
+            document.body.appendChild(element);
+            element.click();
+            document.body.removeChild(element);
+
+            showStatus('✅ 문서 최적화 완료 - heat_no_mapper_report.md 다운로드됨', 'success');
         }
     </script>
 </body>
