@@ -303,6 +303,16 @@
                 </div>
 
                 <div id="previewContainer" style="display:none;">
+                    <div style="display: flex; gap: 10px; margin-bottom: 15px; align-items: center;">
+                        <label style="margin: 0;">미리보기 행 수:</label>
+                        <select id="previewRowCount" style="padding: 6px; border: 1px solid #e0e0e0; border-radius: 4px;">
+                            <option value="5">5개</option>
+                            <option value="10" selected>10개</option>
+                            <option value="20">20개</option>
+                            <option value="50">50개</option>
+                            <option value="all">전체</option>
+                        </select>
+                    </div>
                     <div class="preview-table">
                         <table id="previewTable">
                             <thead>
@@ -353,16 +363,47 @@
             showStatus('파일 분석 중...', 'loading');
 
             try {
+                // 파일 유효성 검증
+                if (file1.size === 0 || file2.size === 0) {
+                    showStatus('❌ 오류: 빈 파일입니다. 유효한 Excel 파일을 선택해주세요.', 'error');
+                    return;
+                }
+
                 const data1 = await readExcel(file1);
                 const data2 = await readExcel(file2);
+
+                // 데이터 유효성 검증
+                if (!data1 || data1.length < 2) {
+                    showStatus('❌ 오류: 정리파일(수출)이 비어있거나 형식이 잘못되었습니다.', 'error');
+                    return;
+                }
+
+                if (!data2 || data2.length < 2) {
+                    showStatus('❌ 오류: OT 열처리 파일이 비어있거나 형식이 잘못되었습니다.', 'error');
+                    return;
+                }
+
+                // 필수 컬럼 확인
+                const headers1 = data1[0];
+                const headers2 = data2[0];
+
+                if (headers1.indexOf('제조번호') === -1) {
+                    showStatus('❌ 오류: 정리파일에 "제조번호" 컬럼이 없습니다.', 'error');
+                    return;
+                }
+
+                if (headers2.indexOf('제조번호') === -1 || headers2.indexOf('HEAT NO') === -1) {
+                    showStatus('❌ 오류: OT 열처리 파일에 필수 컬럼이 없습니다.', 'error');
+                    return;
+                }
 
                 analysisData = matchData(data1, data2);
                 displayResults(analysisData);
 
-                showStatus('분석 완료! 매칭 결과를 확인하세요.', 'success');
+                showStatus('✅ 분석 완료! 매칭 결과를 확인하세요.', 'success');
                 document.getElementById('downloadBtn').style.display = 'block';
             } catch (error) {
-                showStatus('오류 발생: ' + error.message, 'error');
+                showStatus('❌ 파일 처리 오류: ' + error.message, 'error');
             }
         }
 
@@ -439,36 +480,53 @@
 
             // 디버그 정보 표시
             const debugContent = document.getElementById('debugContent');
-            const uniqueHeatNos = new Set(data.matches.map(m => m.heatNo));
+            const uniqueHeatNos = new Set(data.matches.map(m => m.heatNo).filter(h => h));
             const uniqueManuf = new Set(data.matches.map(m => m.manufNo));
+            const emptyHeatNos = data.matches.filter(m => !m.heatNo || m.heatNo.trim() === '').length;
 
             debugContent.innerHTML = `
                 <div>📊 OT 열처리 데이터: ${data.matches.length}개</div>
                 <div>🔗 제조번호 종류: ${uniqueManuf.size}개</div>
-                <div>🌡️ HEAT NO 종류: ${uniqueHeatNos.size}개</div>
+                <div>🌡️ HEAT NO 종류: ${uniqueHeatNos.size}개 ${emptyHeatNos > 0 ? `<span style="color: #ff6b6b;">+ 빈값 ${emptyHeatNos}개 ⚠️</span>` : ''}</div>
                 <div style="margin-top: 8px; color: #666;">
                     ${Array.from(uniqueHeatNos).slice(0, 5).map(h => `<span style="display: inline-block; background: #e0e0e0; padding: 2px 6px; margin: 2px; border-radius: 3px;">${h}</span>`).join('')}
                     ${uniqueHeatNos.size > 5 ? `<span style="display: inline-block; color: #999;">... 외 ${uniqueHeatNos.size - 5}개</span>` : ''}
+                    ${emptyHeatNos > 0 ? `<span style="display: inline-block; background: #ffe0e0; padding: 2px 6px; margin: 2px; border-radius: 3px; color: #ff6b6b;">[빈값]</span>` : ''}
                 </div>
             `;
             document.getElementById('debugInfo').style.display = 'block';
 
-            // 미리보기 테이블 - 다양한 HEAT NO 샘플 선택
-            const tableBody = document.getElementById('tableBody');
-            tableBody.innerHTML = '';
+            // 미리보기 테이블 업데이트 함수
+            function updatePreviewTable() {
+                const rowCount = document.getElementById('previewRowCount').value;
+                const tableBody = document.getElementById('tableBody');
+                tableBody.innerHTML = '';
 
-            const sampleItems = getDistributedSamples(data.matches, 10);
-            sampleItems.forEach(item => {
-                const row = document.createElement('tr');
-                row.className = 'match';
-                row.innerHTML = `
-                    <td>${item.manufNo}</td>
-                    <td>${item.company || '-'}</td>
-                    <td><strong>${item.heatNo || '-'}</strong></td>
-                    <td>✅ 매칭됨</td>
-                `;
-                tableBody.appendChild(row);
-            });
+                let sampleItems;
+                if (rowCount === 'all') {
+                    sampleItems = data.matches;
+                } else {
+                    sampleItems = getDistributedSamples(data.matches, parseInt(rowCount));
+                }
+
+                sampleItems.forEach(item => {
+                    const row = document.createElement('tr');
+                    row.className = 'match';
+                    row.innerHTML = `
+                        <td>${item.manufNo}</td>
+                        <td>${item.company || '-'}</td>
+                        <td><strong>${item.heatNo || '-'}</strong></td>
+                        <td>✅ 매칭됨</td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            }
+
+            // 초기 테이블 표시
+            updatePreviewTable();
+
+            // 행 수 선택 이벤트
+            document.getElementById('previewRowCount').addEventListener('change', updatePreviewTable);
 
             document.getElementById('totalMatched').textContent = matched;
             document.getElementById('previewContainer').style.display = 'block';
