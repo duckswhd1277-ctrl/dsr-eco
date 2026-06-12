@@ -273,6 +273,12 @@
                     <input type="file" id="file2" accept=".xls,.xlsx" />
                 </div>
 
+                <div class="file-input">
+                    <label>📦 원재료 조회 파일 (선택사항)</label>
+                    <input type="file" id="file3" accept=".xls,.xlsx" />
+                    <small style="color: #999;">SF가 아닌 HEAT NO를 처리하기 위해 원재료 정보 파일을 선택할 수 있습니다</small>
+                </div>
+
                 <button onclick="analyzeFiles()">📊 파일 분석하기</button>
 
                 <div id="status" class="status" style="display:none;"></div>
@@ -354,6 +360,7 @@
         async function analyzeFiles() {
             const file1 = document.getElementById('file1').files[0];
             const file2 = document.getElementById('file2').files[0];
+            const file3 = document.getElementById('file3').files[0];
 
             if (!file1 || !file2) {
                 showStatus('두 파일을 모두 선택해주세요', 'error');
@@ -374,6 +381,12 @@
 
                 showStatus('📁 OT 열처리 파일 읽는 중...', 'loading');
                 const data2 = await readExcel(file2);
+
+                let data3 = null;
+                if (file3) {
+                    showStatus('📁 원재료 조회 파일 읽는 중...', 'loading');
+                    data3 = await readExcel(file3);
+                }
 
                 showStatus('🔄 데이터 매칭 중...', 'loading');
 
@@ -402,7 +415,7 @@
                     return;
                 }
 
-                analysisData = matchData(data1, data2);
+                analysisData = matchData(data1, data2, data3);
                 displayResults(analysisData);
 
                 showStatus('✅ 분석 완료! 매칭 결과를 확인하세요.', 'success');
@@ -430,20 +443,33 @@
             });
         }
 
-        function matchData(data1, data2) {
+        function matchData(data1, data2, data3) {
             const headers1 = data1[0];
             const headers2 = data2[0];
 
             // 정리파일 컬럼 인덱스
-            const col1_manuf = headers1.indexOf('제조번호'); // 1
-            const col1_heat = headers1.indexOf('비고2(HEAT)'); // 25
+            const col1_manuf = headers1.indexOf('제조번호');
+            const col1_heat = headers1.indexOf('비고2(HEAT)');
+            const col1_spec = headers1.indexOf('강종');
 
             // OT 파일 컬럼 인덱스
-            const col2_manuf = headers2.indexOf('제조번호'); // 5
-            const col2_heat = headers2.indexOf('HEAT NO'); // 8
+            const col2_manuf = headers2.indexOf('제조번호');
+            const col2_heat = headers2.indexOf('HEAT NO');
+
+            // 원재료 조회 파일 컬럼 인덱스
+            let col3_rodmaker = -1, col3_spec = -1, col3_heat = -1;
+            if (data3) {
+                const headers3 = data3[0];
+                col3_rodmaker = headers3.indexOf('RODMAKER');
+                col3_spec = headers3.indexOf('강종');
+                col3_heat = headers3.indexOf('HEAT NO');
+
+                // 컬럼이 없으면 다른 이름으로 시도
+                if (col3_rodmaker === -1) col3_rodmaker = headers3.indexOf('공급사');
+                if (col3_spec === -1) col3_spec = headers3.indexOf('품번');
+            }
 
             const matches = [];
-            const matchedRows = new Set();
 
             // 먼저 OT 데이터에서 제조번호별 HEAT NO 수집
             const heatMap = {};
@@ -455,29 +481,51 @@
                 }
             }
 
-            // 정리파일의 모든 행에서 제조번호로 HEAT NO 찾기 (같은 제조번호 모두 처리)
+            // 정리파일의 모든 행에서 제조번호로 HEAT NO 찾기
             for (let j = 1; j < data1.length; j++) {
                 const manuf = data1[j][col1_manuf];
                 if (manuf && heatMap[manuf]) {
+                    let finalHeatNo = heatMap[manuf];
+                    const origHeatNo = heatMap[manuf];
+                    const spec = data1[j][col1_spec];
+
+                    // SF로 시작하지 않으면 원재료 조회 파일에서 찾기
+                    if (data3 && !origHeatNo.toString().startsWith('SF')) {
+                        finalHeatNo = findHeatNoFromRawMaterial(data3, col3_rodmaker, col3_spec, col3_heat, spec);
+                    }
+
                     matches.push({
                         manufNo: manuf,
                         company: data1[j][4],
-                        heatNo: heatMap[manuf],
+                        heatNo: finalHeatNo || origHeatNo,
                         rowIndex: j,
                         matched: true
                     });
-                    matchedRows.add(j);
                 }
             }
 
             return {
                 headers1, data1,
                 matches,
-                matchedRows,
                 colIndices: {
                     heat: col1_heat
                 }
             };
+        }
+
+        function findHeatNoFromRawMaterial(data3, col3_rodmaker, col3_spec, col3_heat, spec) {
+            // 포스코 원재료에서 강종과 일치하는 HEAT NO 찾기
+            for (let i = 1; i < data3.length; i++) {
+                const rodmaker = data3[i][col3_rodmaker];
+                const rawSpec = data3[i][col3_spec];
+                const heatNo = data3[i][col3_heat];
+
+                // 포스코이고 강종이 일치하면
+                if (rodmaker && rodmaker.toString().includes('포스코') && rawSpec === spec && heatNo) {
+                    return heatNo;
+                }
+            }
+            return null;
         }
 
         function displayResults(data) {
