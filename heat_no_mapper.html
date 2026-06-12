@@ -759,6 +759,17 @@
         }
 
         function downloadResult() {
+            // 라이브러리 로드 확인
+            if (typeof XLSX === 'undefined') {
+                showStatus('❌ 오류: Excel 라이브러리가 로드되지 않았습니다. 페이지를 새로고침해주세요.', 'error');
+                return;
+            }
+
+            if (typeof saveAs === 'undefined' && typeof FileSaver === 'undefined') {
+                showStatus('❌ 오류: FileSaver 라이브러리가 로드되지 않았습니다. 페이지를 새로고침해주세요.', 'error');
+                return;
+            }
+
             if (!analysisData) {
                 showStatus('❌ 오류: 분석 데이터가 없습니다. 먼저 파일을 분석해주세요.', 'error');
                 return;
@@ -828,7 +839,18 @@
                 const ws = XLSX.utils.aoa_to_sheet(newData);
                 const wb = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(wb, ws, "정리파일(수출)");
-                XLSX.writeFile(wb, `정리파일(수출)_HEAT처리_${new Date().getTime()}.xlsx`);
+
+                // Blob URL을 사용한 다운로드 (FileSaver.js 없이도 작동)
+                const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+                const blob = new Blob([wbout], { type: 'application/octet-stream' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `정리파일(수출)_HEAT처리_${new Date().getTime()}.xlsx`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
 
                 showStatus('✅ 새로운 정리파일을 다운로드했습니다! (원본 파일 보존됨)', 'success');
             } catch (error) {
@@ -875,7 +897,18 @@
 
                 const wb = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(wb, ws, "매칭결과");
-                XLSX.writeFile(wb, `HEAT_NO_매칭결과_${new Date().getTime()}.xlsx`);
+
+                // Blob URL을 사용한 다운로드 (FileSaver.js 없이도 작동)
+                const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+                const blob = new Blob([wbout], { type: 'application/octet-stream' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `HEAT_NO_매칭결과_${new Date().getTime()}.xlsx`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
 
                 showStatus('✅ 매칭 결과를 다운로드했습니다!', 'success');
             } catch (error) {
