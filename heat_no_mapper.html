@@ -809,18 +809,11 @@
                         );
 
                         if (matchingData) {
-                            // HEAT NO 포맷팅
-                            const formattedHeatNo = matchingData.heatNo
-                                ? `HEAT NO : ${matchingData.heatNo}`
-                                : '';
-
                             if (heatColIdx === -1) {
-                                // 새로운 컬럼으로 추가
-                                newRow.push(formattedHeatNo);
-                            } else {
-                                // 기존 컬럼 업데이트
-                                newRow[heatColIdx] = formattedHeatNo;
+                                // 새로운 컬럼으로 추가 (Z열)
+                                newRow.push('');  // 임시 값
                             }
+                            // heatColIdx >= 0이면 기존 값 유지 (나중에 수식으로 변경)
                         }
 
                         newData.push(newRow);
@@ -834,6 +827,20 @@
                 }
 
                 const ws = XLSX.utils.aoa_to_sheet(newData);
+
+                // Z 컬럼에 수식 설정: ="HEAT NO:"&T{rowNumber}
+                const zColIndex = 25;  // Z 컬럼 (A=0, B=1, ..., Z=25)
+                for (let i = 1; i < newData.length; i++) {
+                    const rowNum = i + 1;  // newData[1]은 엑셀 2행
+                    const cellRef = `Z${rowNum}`;
+
+                    ws[cellRef] = {
+                        t: 'f',  // formula type
+                        f: `="HEAT NO:"&T${rowNum}`,  // 수식
+                        v: ''  // 계산된 값 (엑셀에서 자동 계산)
+                    };
+                }
+
                 const wb = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(wb, ws, "정리파일(수출)");
 
