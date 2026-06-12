@@ -801,46 +801,60 @@
                     return;
                 }
 
-                // 원본 파일 구조 유지하며 HEAT NO만 추가
-                const newData = analysisData.data1.map(row => [...row]);
+                // 미리보기(OT 파일 기준)의 제조번호들만 추출
+                const otManufSet = new Set(
+                    analysisData.matches.map(m => m.manufNo.toString())
+                );
+
+                // 헤더 복사
+                const newData = [analysisData.data1[0].slice()];
                 const heatColIdx = analysisData.colIndices.heat;
-                const manufColIdx = analysisData.colIndices.manuf || 0;  // 제조번호 컬럼 인덱스
+                const manufColIdx = analysisData.colIndices.manuf || 0;
 
                 // col1_heat가 -1이면 새로운 컬럼으로 추가
                 if (heatColIdx === -1) {
                     // 헤더에 HEAT NO 추가
-                    if (newData[0]) {
-                        newData[0].push('비고2(HEAT)');
-                    }
+                    newData[0].push('비고2(HEAT)');
+                }
 
-                    // 매칭 결과를 정리파일 제조번호 기준으로 추가
-                    analysisData.matches.forEach(match => {
-                        for (let i = 1; i < newData.length; i++) {
-                            if (newData[i][manufColIdx] &&
-                                newData[i][manufColIdx].toString() === match.manufNo.toString()) {
-                                newData[i].push(match.heatNo || '');
-                                break;  // 같은 제조번호는 한 번만 처리
+                // 정리파일에서 OT 파일의 제조번호와 일치하는 행만 처리
+                for (let i = 1; i < analysisData.data1.length; i++) {
+                    const fileManuf = analysisData.data1[i][manufColIdx];
+
+                    // OT 파일에 있는 제조번호인지 확인
+                    if (fileManuf && otManufSet.has(fileManuf.toString())) {
+                        const newRow = analysisData.data1[i].slice();
+
+                        // OT 파일에서 해당 제조번호의 HEAT NO 찾기
+                        const matchingData = analysisData.matches.find(
+                            m => m.manufNo.toString() === fileManuf.toString()
+                        );
+
+                        if (matchingData) {
+                            if (heatColIdx === -1) {
+                                // 새로운 컬럼으로 추가
+                                newRow.push(matchingData.heatNo || '');
+                            } else {
+                                // 기존 컬럼 업데이트
+                                newRow[heatColIdx] = matchingData.heatNo || '';
                             }
                         }
-                    });
-                } else {
-                    // col1_heat가 유효한 경우 (기존 HEAT NO 컬럼 업데이트)
-                    analysisData.matches.forEach(match => {
-                        for (let i = 1; i < newData.length; i++) {
-                            if (newData[i][manufColIdx] &&
-                                newData[i][manufColIdx].toString() === match.manufNo.toString()) {
-                                newData[i][heatColIdx] = match.heatNo || '';
-                                break;  // 같은 제조번호는 한 번만 처리
-                            }
-                        }
-                    });
+
+                        newData.push(newRow);
+                    }
+                }
+
+                if (newData.length === 1) {
+                    // 헤더만 있고 데이터가 없는 경우
+                    showStatus('❌ 오류: 매칭된 제조번호가 정리파일에 없습니다.', 'error');
+                    return;
                 }
 
                 const ws = XLSX.utils.aoa_to_sheet(newData);
                 const wb = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(wb, ws, "정리파일(수출)");
 
-                // Blob URL을 사용한 다운로드 (FileSaver.js 없이도 작동)
+                // Blob URL을 사용한 다운로드
                 const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
                 const blob = new Blob([wbout], { type: 'application/octet-stream' });
                 const url = URL.createObjectURL(blob);
@@ -852,7 +866,7 @@
                 document.body.removeChild(link);
                 URL.revokeObjectURL(url);
 
-                showStatus('✅ 새로운 정리파일을 다운로드했습니다! (원본 파일 보존됨)', 'success');
+                showStatus('✅ 미리보기 기준으로 필터링된 정리파일을 다운로드했습니다!', 'success');
             } catch (error) {
                 console.error('다운로드 오류:', error);
                 showStatus(`❌ 다운로드 오류: ${error.message}`, 'error');
