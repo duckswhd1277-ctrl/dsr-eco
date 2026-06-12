@@ -758,13 +758,21 @@
         }
 
         function downloadResult() {
-            if (!analysisData) return;
+            if (!analysisData) {
+                showStatus('❌ 오류: 분석 데이터가 없습니다. 먼저 파일을 분석해주세요.', 'error');
+                return;
+            }
+
+            if (!analysisData.matches || analysisData.matches.length === 0) {
+                showStatus('❌ 오류: 매칭된 결과가 없습니다.', 'error');
+                return;
+            }
 
             // 옵션 선택
             const option = confirm(
                 '다운로드 방식을 선택하세요.\n\n' +
                 '확인: 새로운 파일 (HEAT NO만 추가된 정리파일)\n' +
-                '취소: 매칭 결과만 (제조번호, 거래처, HEAT NO)'
+                '취소: 매칭 결과만 (제조번호, 작업번호, 거래처, HEAT NO)'
             );
 
             if (option) {
@@ -775,50 +783,95 @@
         }
 
         function downloadFullFile() {
-            // 원본 파일 구조 유지하며 HEAT NO만 추가
-            const newData = analysisData.data1.map(row => [...row]);
-            const heatColIdx = analysisData.colIndices.heat;
+            try {
+                if (!analysisData) {
+                    showStatus('❌ 오류: 분석 데이터가 없습니다. 먼저 파일을 분석해주세요.', 'error');
+                    return;
+                }
 
-            analysisData.matches.forEach(match => {
-                newData[match.rowIndex][heatColIdx] = match.heatNo;
-            });
+                // 원본 파일 구조 유지하며 HEAT NO만 추가
+                const newData = analysisData.data1.map(row => [...row]);
+                const heatColIdx = analysisData.colIndices.heat;
 
-            const ws = XLSX.utils.aoa_to_sheet(newData);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "정리파일(수출)");
-            XLSX.writeFile(wb, `정리파일(수출)_HEAT처리_${new Date().getTime()}.xlsx`);
+                // col1_heat가 -1이면 새로운 컬럼으로 추가
+                if (heatColIdx === -1) {
+                    // 헤더에 HEAT NO 추가
+                    if (newData[0]) {
+                        newData[0].push('비고2(HEAT)');
+                    }
 
-            showStatus('✅ 새로운 정리파일을 다운로드했습니다! (원본 파일 보존됨)', 'success');
+                    // 매칭 결과 추가
+                    analysisData.matches.forEach(match => {
+                        if (newData[match.rowIndex]) {
+                            newData[match.rowIndex].push(match.heatNo || '');
+                        }
+                    });
+                } else {
+                    // col1_heat가 유효한 경우
+                    analysisData.matches.forEach(match => {
+                        if (newData[match.rowIndex] && newData[match.rowIndex][heatColIdx] !== undefined) {
+                            newData[match.rowIndex][heatColIdx] = match.heatNo;
+                        }
+                    });
+                }
+
+                const ws = XLSX.utils.aoa_to_sheet(newData);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "정리파일(수출)");
+                XLSX.writeFile(wb, `정리파일(수출)_HEAT처리_${new Date().getTime()}.xlsx`);
+
+                showStatus('✅ 새로운 정리파일을 다운로드했습니다! (원본 파일 보존됨)', 'success');
+            } catch (error) {
+                console.error('다운로드 오류:', error);
+                showStatus(`❌ 다운로드 오류: ${error.message}`, 'error');
+            }
         }
 
         function downloadMatchesOnly() {
-            // 매칭 결과만 정리
-            const headers = ['제조번호', '거래처', 'HEAT NO', '상태'];
-            const data = [headers];
+            try {
+                if (!analysisData) {
+                    showStatus('❌ 오류: 분석 데이터가 없습니다. 먼저 파일을 분석해주세요.', 'error');
+                    return;
+                }
 
-            analysisData.matches.forEach(match => {
-                data.push([
-                    match.manufNo,
-                    match.company || '',
-                    match.heatNo || '',
-                    '✅ 매칭됨'
-                ]);
-            });
+                if (!analysisData.matches || analysisData.matches.length === 0) {
+                    showStatus('❌ 오류: 매칭된 결과가 없습니다.', 'error');
+                    return;
+                }
 
-            const ws = XLSX.utils.aoa_to_sheet(data);
-            // 컬럼 너비 설정
-            ws['!cols'] = [
-                { wch: 15 },  // 제조번호
-                { wch: 20 },  // 거래처
-                { wch: 15 },  // HEAT NO
-                { wch: 15 }   // 상태
-            ];
+                // 매칭 결과만 정리
+                const headers = ['제조번호', '작업번호', '거래처', 'HEAT NO', '상태'];
+                const data = [headers];
 
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "매칭결과");
-            XLSX.writeFile(wb, `HEAT_NO_매칭결과_${new Date().getTime()}.xlsx`);
+                analysisData.matches.forEach(match => {
+                    data.push([
+                        match.manufNo || '',
+                        match.jobNo || '',
+                        match.company || '',
+                        match.heatNo || '',
+                        '✅ 매칭됨'
+                    ]);
+                });
 
-            showStatus('✅ 매칭 결과를 다운로드했습니다!', 'success');
+                const ws = XLSX.utils.aoa_to_sheet(data);
+                // 컬럼 너비 설정
+                ws['!cols'] = [
+                    { wch: 15 },  // 제조번호
+                    { wch: 15 },  // 작업번호
+                    { wch: 20 },  // 거래처
+                    { wch: 15 },  // HEAT NO
+                    { wch: 15 }   // 상태
+                ];
+
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "매칭결과");
+                XLSX.writeFile(wb, `HEAT_NO_매칭결과_${new Date().getTime()}.xlsx`);
+
+                showStatus('✅ 매칭 결과를 다운로드했습니다!', 'success');
+            } catch (error) {
+                console.error('다운로드 오류:', error);
+                showStatus(`❌ 다운로드 오류: ${error.message}`, 'error');
+            }
         }
 
         function showStatus(message, type = 'info') {
