@@ -185,6 +185,138 @@ GitHub Issues 페이지:
 
 ---
 
+## 🏗️ Harness Architecture (하네스 구조) ✨ [NEW]
+
+이 프로젝트는 **Claude 공식문서 기반의 Harness Architecture**를 채택했습니다.
+
+### 아키텍처 개요
+
+```
+TIER 1: Coordinator (Manual Agentic Loop)
+├─ 상태 머신: ANALYZING → EXECUTING → DOCUMENTING → VERIFYING
+├─ 에러 처리 & 롤백 메커니즘
+└─ Memory Tool을 통한 컨텍스트 관리
+
+    ↓
+    
+TIER 2: Specialized Agents (Tool Runners)
+├─ Issue Writer: 코드 분석 → 이슈 발견
+├─ Issue Runner: 이슈 구현 → 테스트 → 커밋
+└─ Doc Optimizer: 문서 검토 → 최신화
+
+    ↓
+    
+TIER 3: Tools
+├─ code_execution (Python 실행)
+├─ web_fetch (문서 조회)
+├─ bash (git, gh CLI)
+├─ memory (상태 영속성)
+└─ heat_no_mapper.html (클라이언트)
+```
+
+### 각 Tier의 역할
+
+#### TIER 1: Coordinator (나의 역할)
+- **패턴**: Manual Agentic Loop (사용자/상위 에이전트가 루프 제어)
+- **책임**: 4단계 사이클 조율, 상태 관리, 에러 처리
+- **상태 추적**: 각 단계의 성공/실패를 명시적으로 관리
+- **Memory 관리**: 사이클별 컨텍스트 저장 및 롤백 지원
+
+#### TIER 2: Specialized Agents
+- **패턴**: Tool Runner (SDK가 도구 루프 자동 관리)
+- **Issue Writer**: 
+  - 도구: code_execution, web_fetch, memory
+  - 산출물: findings (JSON)
+  - confidence >= 0.8만 포함
+
+- **Issue Runner**:
+  - 도구: bash, code_execution, memory
+  - 산출물: completions (JSON)
+  - 에러 처리: conflict, test fail, implementation impossible
+
+- **Doc Optimizer**:
+  - 도구: web_fetch, bash, code_execution
+  - 산출물: doc_updates (JSON)
+  - 링크 검증 및 일관성 확인
+
+#### TIER 3: Tools
+- **code_execution**: Python으로 파일 분석, 코드 수정
+- **web_fetch**: README, soul.md, CLAUDE.md 읽기
+- **bash**: git commit, push, gh issue 관리
+- **memory**: 상태 저장, 중복 방지, 롤백 포인트 관리
+
+### 워크플로우 예시
+
+```
+사용자 요청
+    ↓
+Coordinator (Manual Loop)
+├─ ANALYZING
+│  └─ Issue Writer (Tool Runner) 호출
+│     └─ code_execution, web_fetch로 분석
+│        └─ findings JSON 반환
+│
+├─ EXECUTING
+│  └─ Issue Runner (Tool Runner) 호출
+│     └─ bash, code_execution으로 구현
+│        └─ completions JSON 반환
+│
+├─ DOCUMENTING
+│  └─ Doc Optimizer (Tool Runner) 호출
+│     └─ web_fetch, bash로 문서화
+│        └─ doc_updates JSON 반환
+│
+├─ VERIFYING
+│  └─ 검증: 성공률, 커버리지, breaking change 확인
+│     ├─ 통과 → 다음 사이클
+│     └─ 실패 → 롤백 또는 종료
+│
+└─ 최종 리포트 생성
+```
+
+### 핵심 특징
+
+| 특징 | 구현 방식 |
+|------|---------|
+| **상태 관리** | CycleContext 데이터 구조 + Memory Tool |
+| **중복 방지** | Issue Writer가 과거 findings 참고 |
+| **롤백 전략** | git reset + memory restore |
+| **에러 분류** | RECOVERABLE (재시도), ROLLBACK_NEEDED, UNRECOVERABLE |
+| **메트릭 추적** | findings_count, execution_success_rate, documentation_coverage |
+| **리포트** | 최종 사이클, 성공률, 소요 시간, 다음 단계 추천 |
+
+### 아키텍처 문서
+
+당신은 다음 문서들을 읽으면 하네스 구조를 완벽히 이해할 수 있습니다:
+
+1. **`.claude/HARNESS_ARCHITECTURE.md`**
+   - 3-Tier 구조 개요
+   - Manual Loop vs Tool Runner 개념
+   - 용어 정의 (Coordinator, Tool Runner, Memory, Rollback 등)
+
+2. **`.claude/COORDINATOR_MANUAL_LOOP.md`**
+   - Coordinator 상태 머신 상세 구현
+   - 각 단계별 구현 코드 (ANALYZE, EXECUTE, DOCUMENT, VERIFY)
+   - 메모리 통합, 에러 처리, 최종화
+
+3. **`.claude/TOOL_RUNNER_PATTERNS.md`**
+   - Issue Writer 구현 (System Prompt, Tool 호출)
+   - Issue Runner 구현 (Rollback 메커니즘)
+   - Doc Optimizer 구현 (링크 검증)
+
+4. **`.claude/MEMORY_SCHEMA.md`**
+   - 저장소 구조 (경로 계층)
+   - JSON 스키마 (findings, completions, doc_updates)
+   - 쿼리 함수 (중복 확인, 통계, breaking change 감지)
+
+5. **`.claude/RUBRIC_VALIDATION_FRAMEWORK.md`** ✨ NEW
+   - 품질 루브릭 (9개 차원, 100점 만점)
+   - VERIFYING 단계에 루브릭 검증 통합
+   - 각 Tool Runner가 루브릭 기준을 따르도록 설정
+   - Memory Schema에 루브릭 점수 저장 및 트렌드 분석
+
+---
+
 ## 🎓 내가 참고하는 문서
 
 나는 다음 문서들을 기반으로 작업합니다:
@@ -193,6 +325,11 @@ GitHub Issues 페이지:
 2. **CLAUDE.md**: 이 파일 (협업 가이드)
 3. **README.md**: 사용자 매뉴얼
 4. **GitHub Issues**: 구체적 요청사항
+5. **하네스 아키텍처** (위 4개 문서):
+   - HARNESS_ARCHITECTURE.md
+   - COORDINATOR_MANUAL_LOOP.md
+   - TOOL_RUNNER_PATTERNS.md
+   - MEMORY_SCHEMA.md
 
 당신이 이 파일들을 업데이트하면, 나의 작업 품질도 향상됩니다!
 

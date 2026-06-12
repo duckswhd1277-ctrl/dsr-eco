@@ -1,0 +1,19 @@
+name: project-enhancement-workspace
+description: |
+  프로젝트 개선 사이클을 위한 작업 공간입니다.
+  Issue Writer, Issue Runner, Doc Optimizer 팀이 협력하여
+  프로젝트를 지속적으로 개선합니다.
+
+config:
+  type: cloud
+  networking:
+    type: unrestricted
+
+metadata:
+  team: enhancement_cycle
+  created_at: 2026-06-12
+  purpose: |
+    - 코드 품질 개선
+    - 버그 발견 및 수정
+    - 기능 개선
+    - 문서 최신화

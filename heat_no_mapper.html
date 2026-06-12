@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
@@ -326,13 +326,21 @@
                                     <th onclick="sortTable('manufNo')" style="cursor: pointer; user-select: none;">
                                         제조번호 <span id="sortIcon-manufNo"></span>
                                     </th>
+                                    <th onclick="sortTable('jobNo')" style="cursor: pointer; user-select: none;">
+                                        작업번호 <span id="sortIcon-jobNo"></span>
+                                    </th>
+                                    <th onclick="sortTable('wireSize')" style="cursor: pointer; user-select: none;">
+                                        선경 <span id="sortIcon-wireSize"></span>
+                                    </th>
                                     <th onclick="sortTable('company')" style="cursor: pointer; user-select: none;">
                                         거래처 <span id="sortIcon-company"></span>
                                     </th>
                                     <th onclick="sortTable('heatNo')" style="cursor: pointer; user-select: none;">
                                         HEAT NO <span id="sortIcon-heatNo"></span>
                                     </th>
-                                    <th style="cursor: default;">상태</th>
+                                    <th onclick="sortTable('status')" style="cursor: pointer; user-select: none;">
+                                        상태 <span id="sortIcon-status"></span>
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody id="tableBody">
@@ -345,12 +353,6 @@
                 <div style="display: flex; gap: 10px; margin-top: 20px;">
                     <button onclick="downloadResult()" id="downloadBtn" style="display:none; flex: 1;">
                         💾 결과 다운로드
-                    </button>
-                    <button onclick="createGitHubIssue()" id="issueBtn" style="display:none; flex: 1;">
-                        📝 GitHub Issue 생성
-                    </button>
-                    <button onclick="optimizeDoc()" id="docBtn" style="display:none; flex: 1;">
-                        📄 문서 최적화
                     </button>
                 </div>
             </div>
@@ -457,10 +459,16 @@
             const col1_manuf = headers1.indexOf('제조번호');
             const col1_heat = headers1.indexOf('비고2(HEAT)');
             const col1_spec = headers1.indexOf('강종');
+            const col1_wireSize = headers1.indexOf('선경(MM)');
+            const col1_company = headers1.indexOf('거래처');
 
             // OT 파일 컬럼 인덱스
             const col2_manuf = headers2.indexOf('제조번호');
             const col2_heat = headers2.indexOf('HEAT NO');
+            const col2_spec = headers2.indexOf('강종');
+            const col2_wireSize = headers2.indexOf('선경');
+            const col2_rodmaker = headers2.indexOf('ROD MAKER');
+            const col2_jobNo = headers2.indexOf('작업번호');  // 작업번호 컬럼
 
             // 원재료 조회 파일 컬럼 인덱스
             let col3_rodmaker = -1, col3_spec = -1, col3_heat = -1;
@@ -477,44 +485,57 @@
 
             const matches = [];
 
-            // 먼저 OT 데이터에서 제조번호별 HEAT NO 수집
-            const heatMap = {};
+            // OT 파일을 기준으로 미리보기 데이터 생성 (WL 제외)
             for (let i = 1; i < data2.length; i++) {
-                const manuf = data2[i][col2_manuf];
-                const heatNo = data2[i][col2_heat];
-                if (manuf) {
-                    heatMap[manuf] = heatNo;
+                // 작업번호가 'WL'로 시작하면 건너뛰기
+                const jobNo = col2_jobNo >= 0 ? data2[i][col2_jobNo] : null;
+                if (jobNo && jobNo.toString().startsWith('WL')) {
+                    continue;
                 }
-            }
 
-            // 정리파일의 모든 행에서 제조번호로 HEAT NO 찾기
-            for (let j = 1; j < data1.length; j++) {
-                const manuf = data1[j][col1_manuf];
-                if (manuf && heatMap[manuf]) {
-                    let finalHeatNo = heatMap[manuf];
-                    const origHeatNo = heatMap[manuf];
-                    const spec = data1[j][col1_spec];
+                const otManuf = data2[i][col2_manuf];
+                const otJobNo = data2[i][col2_jobNo];
+                const otWireSize = data2[i][col2_wireSize];
+                const otCompany = data2[i][4];  // 거래처 (컬럼 5)
+                const otHeatNo = data2[i][col2_heat];
+                const otSpec = data2[i][col2_spec];
 
-                    // SF로 시작하지 않으면 원재료 조회 파일에서 찾기
-                    if (data3 && !origHeatNo.toString().startsWith('SF')) {
-                        finalHeatNo = findHeatNoFromRawMaterial(data3, col3_rodmaker, col3_spec, col3_heat, spec);
+                // 정리파일에서 같은 제조번호가 있는지 확인 (정리파일 업데이트용)
+                let matchedInFile = false;
+                for (let j = 1; j < data1.length; j++) {
+                    const fileManuf = data1[j][col1_manuf];
+                    const fileSpec = data1[j][col1_spec];
+
+                    if (fileManuf && fileManuf.toString() === otManuf.toString()) {
+                        // 강종도 비교해서 최종 확인
+                        const fileSpecClean = fileSpec.toString().replace(/[^0-9]/g, '');
+                        const otSpecClean = otSpec.toString().replace(/[^0-9]/g, '');
+                        if (fileSpecClean && otSpecClean && fileSpecClean === otSpecClean) {
+                            matchedInFile = true;
+                            break;
+                        }
                     }
-
-                    matches.push({
-                        manufNo: manuf,
-                        company: data1[j][4],
-                        heatNo: finalHeatNo || origHeatNo,
-                        rowIndex: j,
-                        matched: true
-                    });
                 }
+
+                matches.push({
+                    manufNo: otManuf,
+                    jobNo: otJobNo,
+                    wireSize: otWireSize,
+                    company: otCompany,
+                    heatNo: otHeatNo,
+                    status: matchedInFile ? '✅ 정리파일에 존재' : '⚠️ 신규',
+                    rowIndex: i,
+                    matched: true
+                });
             }
 
             return {
                 headers1, data1,
                 matches,
                 colIndices: {
-                    heat: col1_heat
+                    heat: col1_heat,
+                    spec: col1_spec,
+                    wireSize: col1_wireSize
                 }
             };
         }
@@ -559,14 +580,16 @@
 
         function updateSortIcons() {
             // 모든 정렬 아이콘 초기화
-            ['manufNo', 'company', 'heatNo'].forEach(col => {
-                document.getElementById(`sortIcon-${col}`).textContent = '';
+            ['manufNo', 'jobNo', 'wireSize', 'company', 'heatNo', 'status'].forEach(col => {
+                const el = document.getElementById(`sortIcon-${col}`);
+                if (el) el.textContent = '';
             });
 
             // 현재 정렬 컬럼 아이콘 표시
             if (sortState.column) {
                 const icon = sortState.direction === 'asc' ? '↑' : '↓';
-                document.getElementById(`sortIcon-${sortState.column}`).textContent = icon;
+                const el = document.getElementById(`sortIcon-${sortState.column}`);
+                if (el) el.textContent = icon;
             }
         }
 
@@ -636,10 +659,12 @@
                     const row = document.createElement('tr');
                     row.className = 'match';
                     row.innerHTML = `
-                        <td>${item.manufNo}</td>
+                        <td>${item.manufNo || '-'}</td>
+                        <td>${item.jobNo || '-'}</td>
+                        <td>${item.wireSize || '-'}</td>
                         <td>${item.company || '-'}</td>
                         <td><strong>${item.heatNo || '-'}</strong></td>
-                        <td>✅ 매칭됨</td>
+                        <td>${item.status || '-'}</td>
                     `;
                     tableBody.appendChild(row);
                 });
@@ -654,8 +679,6 @@
             document.getElementById('totalMatched').textContent = matched;
             document.getElementById('previewContainer').style.display = 'block';
             document.getElementById('downloadBtn').style.display = 'block';
-            document.getElementById('issueBtn').style.display = 'block';
-            document.getElementById('docBtn').style.display = 'block';
         }
 
         function getDistributedSamples(items, count) {
@@ -741,133 +764,7 @@
             status.style.display = 'block';
         }
 
-        async function createGitHubIssue() {
-            if (!analysisData || analysisData.matches.length === 0) {
-                alert('분석 결과가 없습니다');
-                return;
-            }
-
-            const token = prompt('GitHub Personal Access Token을 입력하세요:\n(또는 취소를 눌러서 로컬 저장)');
-
-            if (token === null) {
-                // 로컬에 Issue 정보 저장
-                saveIssueLocally();
-                return;
-            }
-
-            const matched = analysisData.matches.length;
-            const title = `[자동화] HEAT NO 매칭 완료 - ${matched}개 항목`;
-            const body = generateIssueBody(analysisData.matches);
-
-            try {
-                showStatus('GitHub Issue 생성 중...', 'loading');
-
-                const response = await fetch('https://api.github.com/repos/duckswhd1277-ctrl/dsr-eco/issues', {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `token ${token}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        title: title,
-                        body: body,
-                        labels: ['automation', 'HEAT-NO', 'completed']
-                    })
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    showStatus(`✅ Issue #${data.number} 생성 완료!`, 'success');
-                    document.getElementById('downloadBtn').style.display = 'block';
-                } else {
-                    const error = await response.json();
-                    showStatus(`❌ 오류: ${error.message}`, 'error');
-                }
-            } catch (error) {
-                showStatus(`❌ 오류 발생: ${error.message}`, 'error');
-            }
-        }
-
-        function saveIssueLocally() {
-            const matched = analysisData.matches.length;
-            const body = generateIssueBody(analysisData.matches);
-
-            const issueContent = `# [자동화] HEAT NO 매칭 완료 - ${matched}개 항목\n\n${body}`;
-
-            const element = document.createElement('a');
-            element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(issueContent));
-            element.setAttribute('download', 'github_issue.txt');
-            element.style.display = 'none';
-            document.body.appendChild(element);
-            element.click();
-            document.body.removeChild(element);
-
-            showStatus('✅ Issue 정보를 파일로 다운로드했습니다', 'success');
-        }
-
-        function generateIssueBody(matches) {
-            const matched = matches.length;
-            const sampleRows = matches.slice(0, 5);
-
-            let body = `## 📊 HEAT NO 자동 매칭 완료\n\n`;
-            body += `**매칭 결과:**\n`;
-            body += `- ✅ 성공: ${matched}개 항목\n`;
-            body += `- 📁 파일: 정리파일(수출).xls\n`;
-            body += `- 🔗 매칭 기준: 제조번호\n\n`;
-
-            body += `**매칭 샘플 (상위 5개):**\n`;
-            body += `| 제조번호 | 거래처 | HEAT NO |\n`;
-            body += `|---------|--------|--------|\n`;
-
-            sampleRows.forEach(item => {
-                body += `| ${item.manufNo} | ${item.company || '-'} | ${item.heatNo} |\n`;
-            });
-
-            body += `\n**작업 정보:**\n`;
-            body += `- 도구: HEAT NO 자동 매칭 도구\n`;
-            body += `- 시간: ${new Date().toLocaleString('ko-KR')}\n`;
-            body += `- 상태: ✅ 완료\n`;
-
-            return body;
-        }
-
-        function optimizeDoc() {
-            const docContent = `# HEAT NO 자동 매칭 도구\n\n`;
-            const matched = analysisData.matches.length;
-
-            const docBody = `
-## 📋 작업 완료 요약
-
-### 분석 결과
-- **매칭된 항목**: ${matched}개
-- **매칭 방식**: 제조번호 기반
-- **원본 파일**: 정리파일(수출).xls
-- **대상 컬럼**: 비고2(HEAT)
-
-### 매칭 데이터 샘플
-| 제조번호 | 거래처 | HEAT NO |
-|---------|--------|--------|
-${analysisData.matches.slice(0, 5).map(m => `| ${m.manufNo} | ${m.company || '-'} | ${m.heatNo} |`).join('\n')}
-
-### 다음 단계
-1. 결과 다운로드로 Excel 파일 확인
-2. PowerShell 스크립트로 일괄 적용
-3. 정리파일(수출) 업데이트
-
----
-**생성 일시**: ${new Date().toLocaleString('ko-KR')}
-`;
-
-            const element = document.createElement('a');
-            element.setAttribute('href', 'data:text/markdown;charset=utf-8,' + encodeURIComponent(docContent + docBody));
-            element.setAttribute('download', 'heat_no_mapper_report.md');
-            element.style.display = 'none';
-            document.body.appendChild(element);
-            element.click();
-            document.body.removeChild(element);
-
-            showStatus('✅ 문서 최적화 완료 - heat_no_mapper_report.md 다운로드됨', 'success');
-        }
     </script>
 </body>
 </html>
+
