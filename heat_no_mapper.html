@@ -597,6 +597,7 @@
                 headers1, data1,
                 matches,
                 colIndices: {
+                    manuf: col1_manuf,
                     heat: col1_heat,
                     spec: col1_spec,
                     wireSize: col1_wireSize
@@ -792,6 +793,7 @@
                 // 원본 파일 구조 유지하며 HEAT NO만 추가
                 const newData = analysisData.data1.map(row => [...row]);
                 const heatColIdx = analysisData.colIndices.heat;
+                const manufColIdx = analysisData.colIndices.manuf || 0;  // 제조번호 컬럼 인덱스
 
                 // col1_heat가 -1이면 새로운 컬럼으로 추가
                 if (heatColIdx === -1) {
@@ -800,17 +802,25 @@
                         newData[0].push('비고2(HEAT)');
                     }
 
-                    // 매칭 결과 추가
+                    // 매칭 결과를 정리파일 제조번호 기준으로 추가
                     analysisData.matches.forEach(match => {
-                        if (newData[match.rowIndex]) {
-                            newData[match.rowIndex].push(match.heatNo || '');
+                        for (let i = 1; i < newData.length; i++) {
+                            if (newData[i][manufColIdx] &&
+                                newData[i][manufColIdx].toString() === match.manufNo.toString()) {
+                                newData[i].push(match.heatNo || '');
+                                break;  // 같은 제조번호는 한 번만 처리
+                            }
                         }
                     });
                 } else {
-                    // col1_heat가 유효한 경우
+                    // col1_heat가 유효한 경우 (기존 HEAT NO 컬럼 업데이트)
                     analysisData.matches.forEach(match => {
-                        if (newData[match.rowIndex] && newData[match.rowIndex][heatColIdx] !== undefined) {
-                            newData[match.rowIndex][heatColIdx] = match.heatNo;
+                        for (let i = 1; i < newData.length; i++) {
+                            if (newData[i][manufColIdx] &&
+                                newData[i][manufColIdx].toString() === match.manufNo.toString()) {
+                                newData[i][heatColIdx] = match.heatNo || '';
+                                break;  // 같은 제조번호는 한 번만 처리
+                            }
                         }
                     });
                 }
