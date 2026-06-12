@@ -360,7 +360,7 @@
                 return;
             }
 
-            showStatus('파일 분석 중...', 'loading');
+            showStatus('📁 파일 로드 중...', 'loading');
 
             try {
                 // 파일 유효성 검증
@@ -369,8 +369,13 @@
                     return;
                 }
 
+                showStatus('📁 정리파일(수출) 읽는 중...', 'loading');
                 const data1 = await readExcel(file1);
+
+                showStatus('📁 OT 열처리 파일 읽는 중...', 'loading');
                 const data2 = await readExcel(file2);
+
+                showStatus('🔄 데이터 매칭 중...', 'loading');
 
                 // 데이터 유효성 검증
                 if (!data1 || data1.length < 2) {
